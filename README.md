@@ -1,35 +1,9 @@
 # AGUASABIA
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-Integrantes: Sofia Araya, Joaquin Cortes
-========================================
+
 
 Integrantes: Sofia Araya, Joaquin Cortes
 
->>>>>>> Joaquin/branch
->>>>>>> =======
->>>>>>>
->>>>>>
->>>>>
->>>>
->>>
->>
-
-Integrantes: Sofia Araya, Joaquin Cortes
-
->>>>>>> Joaquin/branch
->>>>>>> =======
->>>>>>> Integrantes: Sofia Araya, Joaquin Cortes
->>>>>>> cdd20fc1b7128376da79900e71e28126509263e6
->>>>>>> Seccion : 00D1
->>>>>>>
->>>>>>
->>>>>
->>>>
->>>
->>
 
 Proyecto de taller de programacion
 
