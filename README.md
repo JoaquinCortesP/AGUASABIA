@@ -1,6 +1,11 @@
 # AGUASABIA
 <<<<<<< HEAD
+<<<<<<< HEAD
 Integrantes: Sofia Araya, Joaquin Cortes 
+=======
+
+Integrantes: Sofia Araya, Joaquin Cortes
+>>>>>>> Joaquin/branch
 =======
 
 Integrantes: Sofia Araya, Joaquin Cortes
