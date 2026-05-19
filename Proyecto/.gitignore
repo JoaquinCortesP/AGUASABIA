@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Entornos virtuales
+venv/
+.env/
+.env.*
+
+# Logs
+*.log
+
+# FastAPI / general
+*.db
+
+# Node / React
+node_modules/
+dist/
+build/
+
+# Vite
+.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Secrets
+.env
+.env.local
+
+# Redis dump
+dump.rdb
+
+# Celery
+celerybeat-schedule
+
+# Coverage
+.coverage
+htmlcov/
+
+# Git
+.gitignore
+# Archivos de API keys
+.env
+config/secrets.json
+
+*.pyc
+
+node_modules
+dist/
+
+.venv/
+
+__pycache__/

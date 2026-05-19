@@ -4,7 +4,9 @@ from app.db.session import SessionLocal
 
 def get_db() -> Generator:
     """
-    Dependencia para obtener la sesión de base de datos.
+    Dependencia de FastAPI para inyectar la sesión de base de datos en las rutas.
+    Crea una sesión nueva por cada petición (request) y asegura que se cierre
+    al terminar, incluso si ocurre un error (gracias al bloque finally).
     """
     try:
         db = SessionLocal()
