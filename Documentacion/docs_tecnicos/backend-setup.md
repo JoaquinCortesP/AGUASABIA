@@ -1,16 +1,29 @@
 # Guía de Configuración del Backend - AguaSabia
 
-## 1. Requisitos Previos
+## 📋 Tabla de Contenidos
 
-### 1.1 Requisitos del Sistema
+1. [Requisitos Previos](#requisitos-previos)
+2. [Instalación](#instalación)
+3. [Configuración de Base de Datos](#configuración-de-base-de-datos)
+4. [Configuración del Backend](#configuración-del-backend)
+5. [Migraciones con Alembic](#migraciones-con-alembic)
+6. [Arquitectura de Datos](#arquitectura-de-datos)
+7. [Ejecución del Backend](#ejecución-del-backend)
+8. [Configuración de Celery](#configuración-de-celery)
+9. [Troubleshooting](#troubleshooting)
 
-- **Sistema Operativo**: Windows 10+, macOS 10.14+, o Linux
-- **Python**: 3.8 o superior
-- **PostgreSQL**: 12 o superior (instalado y ejecutándose)
-- **Redis**: 6.0 o superior (para Celery)
+---
+
+## Requisitos Previos
+
+### Software Requerido
+
+- **Python**: 3.10+ (recomendado 3.11+)
+- **PostgreSQL**: 13+ (instalado y ejecutándose)
+- **Redis**: 6.0+ (para Celery y caché)
 - **Git**: Para clonar el repositorio
 
-### 1.2 Verificación de Requisitos
+### Verificación de Instalación
 
 ```powershell
 # Verificar Python
@@ -26,181 +39,203 @@ psql --version
 redis-cli --version
 ```
 
-## 2. Instalación del Backend
+---
 
-### 2.1 Clonar el Repositorio
+## Instalación
+
+### Paso 1: Clonar el Repositorio
 
 ```powershell
-# Clonar desde el repositorio remoto
 git clone <URL_DEL_REPOSITORIO> AguaSabia
 cd AguaSabia/Proyecto/backend
 ```
 
-### 2.2 Crear Entorno Virtual
+### Paso 2: Crear Entorno Virtual
 
 ```powershell
 # Crear entorno virtual
-python -m venv venv
+python -m venv .venv
 
-# Activar entorno virtual (Windows)
-venv\Scripts\Activate.ps1
+# Activar (Windows PowerShell)
+.venv\Scripts\Activate.ps1
 
-# O en cmd.exe:
-venv\Scripts\activate.bat
+# Activar (Windows CMD)
+.venv\Scripts\activate.bat
 
-# Activar entorno virtual (macOS/Linux)
-source venv/bin/activate
+# Activar (macOS/Linux)
+source .venv/bin/activate
 ```
 
-**Nota**: Debes ver `(venv)` en el inicio de tu línea de comandos cuando el entorno esté activado.
+**Verificar**: Debes ver `(.venv)` en el prompt del terminal.
 
-### 2.3 Instalar Dependencias
+### Paso 3: Instalar Dependencias
 
 ```powershell
-# Asegúrate de estar en el directorio backend con venv activado
 pip install -r requirements.txt
 ```
 
-**Tiempo esperado**: 2-5 minutos según tu conexión a internet.
+**Tiempo estimado**: 2-5 minutos según tu conexión.
 
-**Problemas comunes**:
-- Si `psycopg2-binary` falla en Windows: Necesitas tener Visual C++ build tools instalado
-- Si algún paquete falla: Intenta `pip install --upgrade pip` primero
+**Posibles errores**:
+- **psycopg2-binary falla en Windows**: Instala Visual C++ Build Tools o usa `psycopg2-binary` precompilado
+- **Problemas generales**: Ejecuta `pip install --upgrade pip` primero
 
-### 2.4 Verificar Instalación de Dependencias
+### Paso 4: Verificar Instalación
 
 ```powershell
-# Listar paquetes instalados
-pip list
+# Listar paquetes
+pip list | grep -E "fastapi|sqlalchemy|alembic|celery"
 
-# Verificar que FastAPI está instalado
-python -c "import fastapi; print(f'FastAPI {fastapi.__version__}')"
-
-# Verificar que SQLAlchemy está instalado
-python -c "import sqlalchemy; print(f'SQLAlchemy {sqlalchemy.__version__}')"
+# Prueba de importación
+python -c "from fastapi import FastAPI; from sqlalchemy import create_engine; from alembic import config; print('✓ Todas las dependencias instaladas')"
 ```
 
-## 3. Configuración de PostgreSQL
+---
 
-### 3.1 Conectar a PostgreSQL
+## Configuración de Base de Datos
+
+### Paso 1: Crear Base de Datos en PostgreSQL
 
 ```powershell
-# Conectar con usuario por defecto
+# Conectarse a PostgreSQL
 psql -U postgres
-
-# O si PostgreSQL está en otra ubicación:
-C:\Program Files\PostgreSQL\15\bin\psql.exe -U postgres
 ```
-
-### 3.2 Crear Base de Datos
 
 ```sql
 -- Dentro de psql:
 CREATE DATABASE aguasabia;
 
--- Verificar que se creó
+-- Verificar
 \l
 
--- Salir de psql
+-- Salir
 \q
 ```
 
-### 3.3 Crear Usuario (Opcional)
-
-Si deseas usar un usuario diferente a `postgres`:
+### Paso 2: Crear Usuario (Opcional)
 
 ```sql
--- Crear usuario
-CREATE USER aguasabia_user WITH PASSWORD 'tu_contraseña_segura';
-
--- Dar permisos
-ALTER ROLE aguasabia_user CREATEDB;
-GRANT ALL PRIVILEGES ON DATABASE aguasabia TO aguasabia_user;
-
--- Conectar como el nuevo usuario
-psql -U aguasabia_user -d aguasabia
+-- Si prefieres no usar 'postgres' directamente:
+CREATE USER aguasabia_admin WITH PASSWORD 'contraseña_segura';
+ALTER ROLE aguasabia_admin CREATEDB;
+GRANT ALL PRIVILEGES ON DATABASE aguasabia TO aguasabia_admin;
 ```
 
-## 4. Configuración de Variables de Entorno
+### Paso 3: Verificar Conexión
 
-### 4.1 Crear Archivo .env
+```powershell
+# Conectar a la BD
+psql -U postgres -d aguasabia
 
-En el directorio `backend/`, crea un archivo llamado `.env`:
+# Verificar
+SELECT version();
+
+# Salir
+\q
+```
+
+---
+
+## Configuración del Backend
+
+### Paso 1: Crear Archivo `.env`
+
+En el directorio `backend/`, crea un archivo `.env`:
+
+```powershell
+# Copiar desde template
+cp .env.example .env
+
+# Editar .env con tus valores locales
+```
+
+### Paso 2: Estructura de `.env`
 
 ```env
-# Configuración del Proyecto
+# ===== PROYECTO =====
 PROJECT_NAME=AguaSabia
 API_V1_STR=/api/v1
 
-# Seguridad
-SECRET_KEY=tu_clave_secreta_super_segura_aqui_cambiar_en_produccion
-ACCESS_TOKEN_EXPIRE_MINUTES=11520
+# ===== SEGURIDAD =====
+# Generar con: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SECRET_KEY=tu_clave_super_secreta_cambiar_en_produccion
 
-# Base de Datos PostgreSQL
+# ===== SESIONES JWT =====
+ACCESS_TOKEN_EXPIRE_MINUTES=11520  # 8 días
+
+# ===== BASE DE DATOS =====
 DATABASE_URL=postgresql://postgres:kakashi2709@localhost:5432/aguasabia
 
-# Redis (Para Celery)
+# ===== REDIS =====
 REDIS_URL=redis://localhost:6379/0
 
-# CORS (Orígenes permitidos - separados por coma)
-BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+# ===== CELERY =====
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+
+# ===== CORS =====
+BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:8080,http://127.0.0.1:8000
 ```
 
-### 4.2 Explicación de Variables
-
-| Variable | Descripción | Ejemplo |
-|----------|-------------|---------|
-| `PROJECT_NAME` | Nombre de la aplicación | `AguaSabia` |
-| `API_V1_STR` | Prefijo de endpoints | `/api/v1` |
-| `SECRET_KEY` | Clave para firmar JWT tokens | Generar con `secrets.token_urlsafe(32)` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Minutos antes de expirar sesión | `11520` (8 días) |
-| `DATABASE_URL` | Conexión a PostgreSQL | `postgresql://usuario:contraseña@host:puerto/base_datos` |
-| `REDIS_URL` | Conexión a Redis | `redis://localhost:6379/0` |
-| `BACKEND_CORS_ORIGINS` | URLs permitidas de frontend | `http://localhost:3000` |
-
-### 4.3 Generar SECRET_KEY Seguro
+### Paso 3: Generar SECRET_KEY Seguro
 
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Copiar el resultado en SECRET_KEY del .env
 ```
 
-## 5. Inicialización de la Base de Datos
+### ⚠️ Seguridad
 
-### 5.1 Crear Tablas Automáticamente
+- **`.env` NO debe estar en Git**: Verifica que esté en `.gitignore`
+- **Secretos en producción**: Cambiar todos los valores en .env para producción
+- **Variables sensibles**: No loguear tokens, contraseñas, nor URLs de BD
 
-FastAPI + SQLAlchemy puede crear las tablas automáticamente al levantar la aplicación, pero lo recomendado es hacerlo manualmente:
+---
+
+## Migraciones con Alembic
+
+### Conceptos Básicos
+
+AguaSabia utiliza **Alembic** para gestionar migraciones de base de datos. Esto es más profesional y seguro que `Base.metadata.create_all()`.
+
+- **Alembic**: Herramienta de migración versionada para SQLAlchemy
+- **Ventajas**: Control de cambios, reversibilidad, versionamiento de BD
+- **Archivos**: Están en `alembic/versions/`
+
+### Paso 1: Inicializar Alembic (Ya configurado)
+
+Alembic ya está configurado en `alembic.ini` y `alembic/env.py`. **No necesitas hacer esto nuevamente**.
+
+Pero si necesitaras reinicializar:
 
 ```powershell
-# Desde el directorio backend, con venv activado
-python
-
-# En la consola Python:
-from app.db.base import Base
-from app.db.session import engine
-from app.models.agricultor import Agricultor
-from app.models.municipio import Municipio
-from app.models.parcela import Parcela
-from app.models.balance import BalanceHidrico
-
-# Crear todas las tablas
-Base.metadata.create_all(bind=engine)
-
-# Salir
-exit()
+alembic init alembic
 ```
 
-### 5.2 Verificar Tablas Creadas
+### Paso 2: Aplicar Migraciones Existentes
+
+**Primera vez de configuración** → Aplicar migración inicial:
 
 ```powershell
-# Conectar a la base de datos
+python -m alembic upgrade head
+```
+
+Esto crea todas las tablas necesarias en la BD.
+
+### Paso 3: Verificar Tablas Creadas
+
+```powershell
+# Conectar a la BD
 psql -U postgres -d aguasabia
 
 # Listar tablas
 \dt
 
-# Ver estructura de tabla específica
+# Ver estructura de tabla
 \d agricultores
-\d municipios
+\d regiones
+\d comunas
 \d parcelas
 \d balances_hidricos
 
@@ -209,49 +244,348 @@ psql -U postgres -d aguasabia
 ```
 
 **Tablas esperadas**:
-- `agricultores` - Usuarios agricultores
-- `municipios` - Municipios
-- `parcelas` - Parcelas de tierra
-- `balances_hidricos` - Registros de balance hídrico
 
-### 5.3 Insertar Datos de Prueba (Opcional)
+| Tabla | Descripción | Relaciones |
+|-------|-------------|-----------|
+| `regiones` | Regiones geográficas | → comunas |
+| `comunas` | Comunas dentro de regiones | región_id FK |
+| `agricultores` | Usuarios agricultores | comuna_id FK |
+| `parcelas` | Parcelas de tierra | agricultor_id FK |
+| `balances_hidricos` | Datos de balance hídrico | parcela_id FK |
+| `alembic_version` | Versión de migración | (Sistema) |
 
-```sql
--- Conectar a la base de datos
-psql -U postgres -d aguasabia
+### Paso 4: Crear Nueva Migración (Después de Cambios en Modelos)
 
--- Insertar municipios de prueba
-INSERT INTO municipios (nombre, region) VALUES 
-('San Salvador', 'Cuscatlán'),
-('Soyapango', 'San Salvador'),
-('Santa Tecla', 'La Libertad');
+Si modificas `app/models/`:
 
--- Verificar datos
-SELECT * FROM municipios;
+```powershell
+# 1. Editar el archivo del modelo en app/models/
+
+# 2. Generar migración automática:
+python -m alembic revision --autogenerate -m "Descripción del cambio"
+
+# 3. Revisar la migración generada en alembic/versions/
+
+# 4. Aplicar:
+python -m alembic upgrade head
 ```
 
-## 6. Configuración de Redis
-
-### 6.1 Instalar Redis (Windows)
-
-**Opción 1**: Usando Windows Subsystem for Linux (WSL)
+**Ejemplo**:
 ```powershell
-# En WSL:
+python -m alembic revision --autogenerate -m "Agregar columna fecha_verificacion en agricultores"
+python -m alembic upgrade head
+```
+
+### Paso 5: Ver Historial de Migraciones
+
+```powershell
+# Ver versión actual de BD
+python -m alembic current
+
+# Ver historial completo
+python -m alembic history --verbose
+```
+
+---
+
+## Arquitectura de Datos
+
+### Modelo de Relaciones
+
+```
+REGIONES
+├── id (PK)
+├── nombre (UNIQUE)
+├── codigo (UNIQUE)
+├── created_at
+└── updated_at
+    ↓
+    └──→ COMUNAS
+        ├── id (PK)
+        ├── nombre
+        ├── region_id (FK)
+        ├── created_at
+        └── updated_at
+            ↓
+            └──→ AGRICULTORES
+                ├── id (PK)
+                ├── nombre
+                ├── email (UNIQUE)
+                ├── hashed_password
+                ├── comuna_id (FK)
+                ├── created_at
+                └── updated_at
+                    ↓
+                    └──→ PARCELAS
+                        ├── id (PK)
+                        ├── nombre
+                        ├── latitud
+                        ├── longitud
+                        ├── area
+                        ├── cultivo
+                        ├── agricultor_id (FK)
+                        ├── created_at
+                        └── updated_at
+                            ↓
+                            └──→ BALANCES_HIDRICOS
+                                ├── id (PK)
+                                ├── fecha
+                                ├── et_o
+                                ├── evapotranspiracion_real
+                                ├── precipitacion
+                                ├── riego
+                                ├── humedad_suelo
+                                ├── parcela_id (FK)
+                                ├── created_at
+                                └── updated_at
+```
+
+### Cambios Principales (v1.0)
+
+**Antes**: Estructura con `municipios`
+**Ahora**: Estructura profesional con `regiones` y `comunas`
+
+- ✅ Geolocalización mejorada
+- ✅ Timestamps automáticos en todas las tablas
+- ✅ Índices profesionales para queries rápidas
+- ✅ Constraints y validaciones en BD
+- ✅ Foreign Keys con cascada apropiada
+- ✅ Versionamiento de BD con Alembic
+
+---
+
+## Ejecución del Backend
+
+### Paso 1: Iniciar FastAPI
+
+```powershell
+# Opción 1: Con uvicorn directamente
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Opción 2: Crear tarea en tasks.json de VS Code (recomendado)
+```
+
+El backend estará disponible en:
+- **API**: http://localhost:8000
+- **Docs (Swagger)**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Paso 2: Probar Endpoints
+
+```powershell
+# Prueba de healthcheck (si existe)
+curl http://localhost:8000/api/v1/health
+
+# Ver documentación interactiva
+# Abre en navegador: http://localhost:8000/docs
+```
+
+### Paso 3: Logs y Debug
+
+```powershell
+# Cambiar nivel de log (modifica en config.py si necesario)
+# En desarrollo: LOG_LEVEL=DEBUG
+# En producción: LOG_LEVEL=INFO
+
+# Ver logs en tiempo real
+# Revisa la consola donde ejecutaste uvicorn
+```
+
+---
+
+## Configuración de Celery
+
+### Paso 1: Verificar Redis
+
+```powershell
+# Verificar que Redis está ejecutándose
+redis-cli ping
+
+# Debe responder: PONG
+```
+
+### Paso 2: Iniciar Worker de Celery
+
+**En otra terminal** (con venv activado):
+
+```powershell
+# Iniciar worker
+celery -A app.workers.celery_app worker --loglevel=info
+
+# O con auto-reload (desarrollo):
+watchmedo auto_restart -d app -p '*.py' -- \
+    celery -A app.workers.celery_app worker --loglevel=info
+```
+
+### Paso 3: Monitorear Celery (Opcional)
+
+```powershell
+# En otra terminal:
+celery -A app.workers.celery_app events
+
+# O instalar flower:
+pip install flower
+flower -A app.workers.celery_app --port=5555
+
+# Luego acceder a: http://localhost:5555
+```
+
+### Ejemplo de Tarea Celery
+
+Ver `app/workers/tasks.py` para tareas disponibles.
+
+```python
+# Tareas típicas: procesamiento de imágenes, cálculos, emails, etc.
+```
+
+---
+
+## Troubleshooting
+
+### Error: `psycopg2.errors.AdminShutdownInProgress`
+
+**Causa**: PostgreSQL no está ejecutándose
+
+**Solución**:
+```powershell
+# Windows: Iniciar servicio PostgreSQL
+pg_ctl -D "C:\Program Files\PostgreSQL\15\data" start
+
+# macOS (si usas Homebrew)
+brew services start postgresql
+
+# Linux
+sudo systemctl start postgresql
+```
+
+### Error: `ERROR: database "aguasabia" does not exist`
+
+**Causa**: Base de datos no fue creada
+
+**Solución**:
+```powershell
+psql -U postgres
+# Dentro de psql:
+CREATE DATABASE aguasabia;
+```
+
+### Error: `REDIS connection refused`
+
+**Causa**: Redis no está ejecutándose
+
+**Solución**:
+```powershell
+# Windows (WSL)
 wsl
-sudo apt-get install redis-server
 redis-server
-```
 
-**Opción 2**: Usando Docker (si tienes Docker instalado)
-```powershell
+# macOS (Homebrew)
+brew services start redis
+
+# Docker
 docker run -d -p 6379:6379 redis:latest
 ```
 
-**Opción 3**: Descargar Redis para Windows
+### Error: `ModuleNotFoundError` después de instalar dependencias
+
+**Causa**: Entorno virtual no está activado
+
+**Solución**:
 ```powershell
-# Descargar desde: https://github.com/microsoftarchive/redis/releases
-# Ejecutar: redis-server.exe
+# Verificar:
+where python
+
+# Debe mostrar ruta con .venv
+
+# Si no:
+.venv\Scripts\Activate.ps1
 ```
+
+### Error en Alembic: `Target database is not up to date`
+
+**Causa**: Hay migraciones pendientes
+
+**Solución**:
+```powershell
+# Ver estado
+python -m alembic current
+
+# Aplicar migraciones
+python -m alembic upgrade head
+```
+
+### Error: `ImportError: No module named 'app'`
+
+**Causa**: No estás en el directorio `backend/`
+
+**Solución**:
+```powershell
+cd AguaSabia/Proyecto/backend
+python -m alembic upgrade head
+```
+
+---
+
+## Checklist de Setup Completo
+
+- [ ] Python 3.10+ instalado
+- [ ] PostgreSQL 13+ instalado y ejecutándose
+- [ ] Redis 6.0+ instalado y ejecutándose
+- [ ] Repositorio clonado
+- [ ] Entorno virtual creado y activado
+- [ ] Dependencias instaladas (`pip install -r requirements.txt`)
+- [ ] `.env` creado con valores correctos
+- [ ] Base de datos `aguasabia` creada
+- [ ] Migraciones aplicadas (`alembic upgrade head`)
+- [ ] Backend inicia sin errores (`uvicorn app.main:app --reload`)
+- [ ] Documentación accesible (`http://localhost:8000/docs`)
+- [ ] Redis ejecutándose
+- [ ] Worker Celery iniciado (en otra terminal)
+
+---
+
+## Comandos Rápidos
+
+```powershell
+# Setup completo
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m alembic upgrade head
+
+# Desarrollo
+uvicorn app.main:app --reload
+
+# Celery (otra terminal)
+celery -A app.workers.celery_app worker --loglevel=info
+
+# Base de datos
+psql -U postgres -d aguasabia
+
+# Ver migraciones
+python -m alembic current
+python -m alembic history
+
+# Nueva migración
+python -m alembic revision --autogenerate -m "Descripción"
+```
+
+---
+
+## Documentación Adicional
+
+- [FastAPI Docs](https://fastapi.tiangolo.com)
+- [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/)
+- [Alembic](https://alembic.sqlalchemy.org)
+- [Celery](https://docs.celeryproject.io)
+- [PostgreSQL](https://www.postgresql.org/docs)
+
+---
+
+**Última actualización**: 2026-05-25  
+**Backend Version**: 1.0.0  
+**Alembic**: Configurado y automatizado
+
 
 ### 6.2 Instalar Redis (macOS)
 
