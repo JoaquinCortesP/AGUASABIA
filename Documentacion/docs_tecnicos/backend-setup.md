@@ -1,6 +1,6 @@
 # Configuración del Backend - AguaSabia
 
-Esta guía explica detalladamente cómo instalar, configurar y ejecutar el backend del proyecto desde cero. Está estructurada paso a paso para que cualquier integrante del equipo pueda levantar el entorno de desarrollo de forma autónoma.
+Esta guía explica cómo instalar, configurar y ejecutar el backend desde cero. Incluye los cambios recientes: autenticación por `Administrador`, la nueva entidad `Municipio` y el script `scripts/seed.py` que crea un administrador por defecto.
 
 ---
 
@@ -8,13 +8,13 @@ Esta guía explica detalladamente cómo instalar, configurar y ejecutar el backe
 
 Antes de comenzar, asegúrate de tener instalado y en funcionamiento lo siguiente en tu sistema:
 
-- **Python 3.10 o superior** (probado y compatible hasta Python 3.12).
+- **Python 3.10 o superior**.
 - **PostgreSQL 13 o superior** (ejecutándose como servicio local).
 - **Redis** (para la cola de mensajes y caché de Celery, puerto `6379`).
 - **Git** (para clonar y gestionar el código).
 
 ### Verificación de requisitos
-Ejecuta los siguientes comandos en tu terminal (PowerShell en Windows, o Bash en macOS/Linux) para comprobar que tienes las herramientas necesarias:
+Ejecuta los siguientes comandos en tu terminal para comprobar las herramientas necesarias:
 
 ```bash
 # Verificar Python
@@ -33,6 +33,7 @@ redis-cli --version
 
 ### Paso 1 — Acceder a la carpeta del backend
 Abre la terminal en la raíz del proyecto y desplázate al directorio del backend:
+
 ```bash
 cd Proyecto/backend
 ```
@@ -41,6 +42,7 @@ cd Proyecto/backend
 El entorno virtual aísla las librerías del proyecto de tu sistema global.
 
 **En Windows (PowerShell):**
+
 ```powershell
 # Crear el entorno virtual
 python -m venv .venv
@@ -50,6 +52,7 @@ python -m venv .venv
 ```
 
 **En macOS / Linux:**
+
 ```bash
 # Crear el entorno virtual
 python3 -m venv .venv
@@ -58,34 +61,44 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-> [!NOTE]
-> Sabrás que el entorno virtual está activado porque verás el prefijo `(.venv)` al principio de la línea en tu terminal.
+Sabrás que el entorno virtual está activado porque verás el prefijo `(.venv)` al principio de la línea en tu terminal.
 
 ### Paso 3 — Instalar las dependencias
 Con el entorno virtual activado, instala todas las librerías necesarias ejecutando:
+
 ```bash
 pip install -r requirements.txt
 ```
-Esto instalará FastAPI, SQLAlchemy, Alembic, Celery, Redis y los conectores de base de datos correspondientes.
+
+Esto instalará FastAPI, SQLAlchemy, Alembic, Celery, Redis y los conectores de base de datos.
 
 ### Paso 4 — Configurar las variables de entorno
 Copia la plantilla de configuración `.env.example` y renómbrala a `.env`:
 
 **En Windows (PowerShell):**
+
 ```powershell
 Copy-Item .env.example .env
 ```
 
 **En macOS / Linux / Git Bash:**
+
 ```bash
 cp .env.example .env
 ```
 
-Abre el archivo `.env` recién creado en tu editor de código preferido (como VS Code) y actualiza la variable `DATABASE_URL` con tu usuario y contraseña locales de PostgreSQL.
+Abre el archivo `.env` recién creado en tu editor y actualiza `DATABASE_URL` con tus credenciales locales de PostgreSQL. Añade también las variables clave usadas por el proyecto:
 
 ```env
 # Ejemplo de configuración local en .env
 DATABASE_URL=postgresql://postgres:tu_contraseña_aqui@localhost:5432/aguasabia
+
+# Variables recomendadas
+SECRET_KEY=clave_secreta_para_desarrollo_cambiar_en_produccion
+ACCESS_TOKEN_EXPIRE_MINUTES=11520
+REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=${REDIS_URL}
+CELERY_RESULT_BACKEND=${REDIS_URL}
 ```
 
 ### Paso 5 — Crear la base de datos en PostgreSQL
@@ -102,8 +115,18 @@ CREATE DATABASE aguasabia;
 \q
 ```
 
+Opcional: si prefieres crear un usuario dedicado y asignarle permisos:
+
+```sql
+CREATE USER aguasabia_user WITH PASSWORD 'tu_pass_segura';
+GRANT ALL PRIVILEGES ON DATABASE aguasabia TO aguasabia_user;
+\q
+```
+
 ### Paso 6 — Generar y aplicar las migraciones (Base de Datos)
-Dado que el repositorio no incluye archivos de migración previos en el historial de Alembic (el directorio `alembic/versions` está inicialmente vacío), **es necesario generar la migración inicial antes de intentar actualizar la base de datos**.
+El proyecto ha añadido recientemente los modelos `Administrador` y `Municipio`. Si no existen revisiones de Alembic aún, debes crear la migración inicial que incluya estas tablas.
+
+Importante: revisa que `alembic.ini` y `app/core/config.py` (o tu `.env`) apunten correctamente a `DATABASE_URL` antes de generar la revisión.
 
 Sigue estos dos comandos en orden:
 
@@ -118,21 +141,38 @@ Sigue estos dos comandos en orden:
 
 #### Verificación rápida de tablas:
 Para asegurar que todo se haya creado correctamente, ejecuta:
+
 ```bash
 psql -U postgres -d aguasabia -c "\dt"
 ```
-Deberías ver listadas las siguientes 5 tablas principales:
+
+Después de aplicar las migraciones deberías ver, como mínimo, las tablas relacionadas con dominio y las nuevas entidades:
+
 - `regiones`
 - `comunas`
+- `municipios`  <-- nueva entidad
+- `administradores`  <-- nueva entidad
 - `agricultores`
 - `parcelas`
 - `balances_hidricos`
 
+Si la migración automática no detecta algún cambio (por ejemplo relaciones o constraints nuevas), genera la revisión y corrige el script antes de aplicar.
+
 ### Paso 7 — Cargar los datos semilla (Seed)
-Ejecuta el script de poblamiento inicial para cargar en la base de datos las regiones y comunas de Chile que presentan decretos de escasez hídrica:
+Ejecuta el script de poblamiento inicial para cargar en la base de datos las regiones, comunas y crear un `Municipio` y `Administrador` de ejemplo:
+
 ```bash
 python scripts/seed.py
 ```
+
+Notas sobre `seed.py`:
+
+- El script ahora crea también un `Municipio` de ejemplo (Municipio Copiapó) y un `Administrador` por defecto.
+- Credenciales del administrador generado:
+   - Email: `admin@aguasabia.cl`
+   - Contraseña inicial: `Admin1234!`
+
+Por seguridad, cambia la contraseña tras el primer login o ajusta el script si quieres otra contraseña.
 
 ### Paso 8 — Iniciar el servidor de desarrollo (FastAPI)
 Para iniciar el servidor de FastAPI con recarga automática:
@@ -149,6 +189,7 @@ El backend estará disponible en:
 Celery se encarga de procesar tareas costosas o asíncronas (como la futura sincronización climática). Abre **una nueva ventana de terminal**, accede a `Proyecto/backend`, activa tu entorno virtual e inicia el worker:
 
 **Comando recomendado para Windows (modo mono-hilo para desarrollo local):**
+
 ```bash
 celery -A app.worker.celery_app worker --loglevel=info --pool=solo
 ```
@@ -185,3 +226,40 @@ Redis no está encendido o no está escuchando en `localhost:6379`.
 
 ### 🔴 `FAILED: Target database is not up to date`
 La base de datos tiene un historial de Alembic diferente al código. Ejecuta `python -m alembic upgrade head` para sincronizar las migraciones.
+
+---
+
+## Cambios funcionales importantes (resumen rápido)
+
+- Autenticación: El endpoint de login ahora autentica `Administradores`. Para obtener token JWT use el endpoint:
+
+   - POST `/api/v1/login/access-token` con `username=<email>` y `password=<password>` (form-data / x-www-form-urlencoded). El token permite acceder a rutas administrativas.
+
+- Admin-only: La creación de `Agricultores` (registro y creación de parcelas asociadas) está protegida y solo puede hacerla un `Administrador` vinculado a un `Municipio`.
+
+- Scoping territorial: Los administradores están ligados a un `Municipio`; muchas operaciones (crear parcela, ver balances) validan que la entidad objetivo pertenezca a la comuna del municipio del admin.
+
+## Ejemplo rápido: obtener token y llamar a la API
+
+1) Obtener token (ejemplo con `curl`):
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/login/access-token" -d "username=admin@aguasabia.cl&password=Admin1234!" -H "Content-Type: application/x-www-form-urlencoded"
+```
+
+Respuesta esperada: JSON con `access_token` y `token_type`.
+
+2) Usar token para crear un agricultor (ejemplo simplificado):
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/admin/agricultores" \
+   -H "Authorization: Bearer <ACCESS_TOKEN>" \
+   -H "Content-Type: application/json" \
+   -d '{"nombre":"Juan", "email":"juan@ejemplo.cl","password":"Pass123!","parcela": {"nombre":"Mi Parcela","superficie":1.2,"tipo_cultivo":"olivo","latitud":-27.366,"longitud":-70.331,"comuna_id":<ID_COMUNA> }}'
+```
+
+Reemplaza `<ACCESS_TOKEN>` por el token obtenido y `<ID_COMUNA>` por la comuna correspondiente al municipio del admin.
+
+---
+
+Si prefieres, puedo generar una versión corta de este README con solo los comandos mínimos.
