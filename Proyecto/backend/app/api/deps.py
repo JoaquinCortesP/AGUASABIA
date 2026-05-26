@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.core.config import settings
-from app.models.agricultor import Agricultor
+from app.models.administrador import Administrador
 from app.schemas.token import TokenPayload
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -21,21 +21,18 @@ def get_db() -> Generator:
     finally:
         db.close()
 
-def get_current_user(
+def get_current_admin(
     db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
-) -> Agricultor:
-    # Función para obtener el agricultor actual (usuario) a partir del token JWT
+) -> Administrador:
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=["HS256"]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         token_data = TokenPayload(**payload)
     except (JWTError, ValidationError):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No se pudo validar las credenciales",
         )
-    user = db.query(Agricultor).filter(Agricultor.id == token_data.sub).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return user
+    admin = db.query(Administrador).filter(Administrador.id == token_data.sub).first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Administrador no encontrado")
+    return admin

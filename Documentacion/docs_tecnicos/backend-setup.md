@@ -1,18 +1,22 @@
 # Guía de Configuración del Backend - AguaSabia
 
-## 1. Requisitos Previos
+Esta guía explica detalladamente cómo instalar, configurar y ejecutar el backend del proyecto desde cero. Está estructurada paso a paso para que cualquier integrante del equipo pueda levantar el entorno de desarrollo de forma autónoma.
 
-### 1.1 Requisitos del Sistema
+---
 
-- **Sistema Operativo**: Windows 10+, macOS 10.14+, o Linux
-- **Python**: 3.8 o superior
-- **PostgreSQL**: 12 o superior (instalado y ejecutándose)
-- **Redis**: 6.0 o superior (para Celery)
-- **Git**: Para clonar el repositorio
+## Requisitos Previos
 
-### 1.2 Verificación de Requisitos
+Antes de comenzar, asegúrate de tener instalado y en funcionamiento lo siguiente en tu sistema:
 
-```powershell
+- **Python 3.10 o superior** (probado y compatible hasta Python 3.12).
+- **PostgreSQL 13 o superior** (ejecutándose como servicio local).
+- **Redis** (para la cola de mensajes y caché de Celery, puerto `6379`).
+- **Git** (para clonar y gestionar el código).
+
+### Verificación de requisitos
+Ejecuta los siguientes comandos en tu terminal (PowerShell en Windows, o Bash en macOS/Linux) para comprobar que tienes las herramientas necesarias:
+
+```bash
 # Verificar Python
 python --version
 
@@ -26,66 +30,71 @@ psql --version
 redis-cli --version
 ```
 
-## 2. Instalación del Backend
+---
 
-### 2.1 Clonar el Repositorio
+## Guía de Configuración Paso a Paso
 
-```powershell
-# Clonar desde el repositorio remoto
-git clone <URL_DEL_REPOSITORIO> AguaSabia
-cd AguaSabia/Proyecto/backend
+### Paso 1 — Acceder a la carpeta del backend
+Abre la terminal en la raíz del proyecto y desplázate al directorio del backend:
+```bash
+cd Proyecto/backend
 ```
 
-### 2.2 Crear Entorno Virtual
+### Paso 2 — Crear y activar el entorno virtual
+El entorno virtual aísla las librerías del proyecto de tu sistema global.
 
+**En Windows (PowerShell):**
 ```powershell
 # Crear entorno virtual
 python -m venv venv
 
 # Activar entorno virtual (Windows)
 .venv\Scripts\Activate.ps1
-
-# O en cmd.exe:
-venv\Scripts\activate.bat
-
-# Activar entorno virtual (macOS/Linux)
-source venv/bin/activate
 ```
 
-**Nota**: Debes ver `(venv)` en el inicio de tu línea de comandos cuando el entorno esté activado.
+**En macOS / Linux:**
+```bash
+# Crear el entorno virtual
+python3 -m venv .venv
 
-### 2.3 Instalar Dependencias
+# Activar el entorno virtual
+source .venv/bin/activate
+```
 
-```powershell
-# Asegúrate de estar en el directorio backend con venv activado
+> [!NOTE]
+> Sabrás que el entorno virtual está activado porque verás el prefijo `(.venv)` al principio de la línea en tu terminal.
+
+### Paso 3 — Instalar las dependencias
+Con el entorno virtual activado, instala todas las librerías necesarias ejecutando:
+```bash
 pip install -r requirements.txt
 ```
+Esto instalará FastAPI, SQLAlchemy, Alembic, Celery, Redis y los conectores de base de datos correspondientes.
 
-**Tiempo esperado**: 2-5 minutos según tu conexión a internet.
+### Paso 4 — Configurar las variables de entorno
+Copia la plantilla de configuración `.env.example` y renómbrala a `.env`:
 
-**Problemas comunes**:
-- Si `psycopg2-binary` falla en Windows: Necesitas tener Visual C++ build tools instalado
-- Si algún paquete falla: Intenta `pip install --upgrade pip` primero
-
-### 2.4 Verificar Instalación de Dependencias
-
+**En Windows (PowerShell):**
 ```powershell
-# Listar paquetes instalados
-pip list
-
-# Verificar que FastAPI está instalado
-python -c "import fastapi; print(f'FastAPI {fastapi.__version__}')"
-
-# Verificar que SQLAlchemy está instalado
-python -c "import sqlalchemy; print(f'SQLAlchemy {sqlalchemy.__version__}')"
+Copy-Item .env.example .env
 ```
 
-## 3. Configuración de PostgreSQL
+**En macOS / Linux / Git Bash:**
+```bash
+cp .env.example .env
+```
 
-### 3.1 Conectar a PostgreSQL
+Abre el archivo `.env` recién creado en tu editor de código preferido (como VS Code) y actualiza la variable `DATABASE_URL` con tu usuario y contraseña locales de PostgreSQL.
 
-```powershell
-# Conectar con usuario por defecto
+```env
+# Ejemplo de configuración local en .env
+DATABASE_URL=postgresql://postgres:tu_contraseña_aqui@localhost:5432/aguasabia
+```
+
+### Paso 5 — Crear la base de datos en PostgreSQL
+Antes de correr las migraciones, debes tener creada la base de datos vacía. Conéctate a tu consola de PostgreSQL:
+
+```bash
 psql -U postgres
 
 # O si PostgreSQL está en otra ubicación:
@@ -97,175 +106,50 @@ C:\Program Files\PostgreSQL\15\bin\psql.exe -U postgres
 ```sql
 -- Dentro de psql:
 CREATE DATABASE aguasabia;
-
--- Verificar que se creó
-\l
-
--- Salir de psql
 \q
 ```
 
-### 3.3 Crear Usuario (Opcional)
+### Paso 6 — Generar y aplicar las migraciones (Base de Datos)
+Dado que el repositorio no incluye archivos de migración previos en el historial de Alembic (el directorio `alembic/versions` está inicialmente vacío), **es necesario generar la migración inicial antes de intentar actualizar la base de datos**.
 
-Si deseas usar un usuario diferente a `postgres`:
+Sigue estos dos comandos en orden:
 
-```sql
--- Crear usuario
-CREATE USER aguasabia_user WITH PASSWORD 'tu_contraseña_segura';
+1. **Generar la primera revisión**: Alembic comparará tus modelos de Python con tu base de datos vacía y creará los scripts de creación de tablas.
+   ```bash
+   python -m alembic revision --autogenerate -m "migracion inicial"
+   ```
+2. **Aplicar la migración a la base de datos**: Este comando ejecutará el script generado y creará las tablas físicamente.
+   ```bash
+   python -m alembic upgrade head
+   ```
 
--- Dar permisos
-ALTER ROLE aguasabia_user CREATEDB;
-GRANT ALL PRIVILEGES ON DATABASE aguasabia TO aguasabia_user;
-
--- Conectar como el nuevo usuario
-psql -U aguasabia_user -d aguasabia
-```
-
-## 4. Configuración de Variables de Entorno
-
-### 4.1 Crear Archivo .env
-
-En el directorio `backend/`, crea un archivo llamado `.env`:
-
-```env
-# Configuración del Proyecto
-PROJECT_NAME=AguaSabia
-API_V1_STR=/api/v1
-
-# Seguridad
-SECRET_KEY=tu_clave_secreta_super_segura_aqui_cambiar_en_produccion
-ACCESS_TOKEN_EXPIRE_MINUTES=11520
-
-# Base de Datos PostgreSQL
-DATABASE_URL=postgresql://postgres:kakashi2709@localhost:5432/aguasabia
-
-# Redis (Para Celery)
-REDIS_URL=redis://localhost:6379/0
-
-# CORS (Orígenes permitidos - separados por coma)
-BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:8080
-```
-
-### 4.2 Explicación de Variables
-
-| Variable | Descripción | Ejemplo |
-|----------|-------------|---------|
-| `PROJECT_NAME` | Nombre de la aplicación | `AguaSabia` |
-| `API_V1_STR` | Prefijo de endpoints | `/api/v1` |
-| `SECRET_KEY` | Clave para firmar JWT tokens | Generar con `secrets.token_urlsafe(32)` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Minutos antes de expirar sesión | `11520` (8 días) |
-| `DATABASE_URL` | Conexión a PostgreSQL | `postgresql://usuario:contraseña@host:puerto/base_datos` |
-| `REDIS_URL` | Conexión a Redis | `redis://localhost:6379/0` |
-| `BACKEND_CORS_ORIGINS` | URLs permitidas de frontend | `http://localhost:3000` |
-
-### 4.3 Generar SECRET_KEY Seguro
-
-```powershell
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-
-## 5. Inicialización de la Base de Datos
-
-### 5.1 Crear Tablas Automáticamente
-
-FastAPI + SQLAlchemy puede crear las tablas automáticamente al levantar la aplicación, pero lo recomendado es hacerlo manualmente:
-
-```powershell
-# Desde el directorio backend, con venv activado
-python
-
-# En la consola Python:
-from app.db.base import Base
-from app.db.session import engine
-from app.models.agricultor import Agricultor
-from app.models.municipio import Municipio
-from app.models.parcela import Parcela
-from app.models.balance import BalanceHidrico
-
-# Crear todas las tablas
-Base.metadata.create_all(bind=engine)
-
-# Salir
-exit()
-```
-
-### 5.2 Verificar Tablas Creadas
-
-```powershell
-# Conectar a la base de datos
-psql -U postgres -d aguasabia
-
-# Listar tablas
-\dt
-
-# Ver estructura de tabla específica
-\d agricultores
-\d municipios
-\d parcelas
-\d balances_hidricos
-
-# Salir
-\q
-```
-
-**Tablas esperadas**:
-- `agricultores` - Usuarios agricultores
-- `municipios` - Municipios
-- `parcelas` - Parcelas de tierra
-- `balances_hidricos` - Registros de balance hídrico
-
-### 5.3 Insertar Datos de Prueba (Opcional)
-
-```sql
--- Conectar a la base de datos
-psql -U postgres -d aguasabia
-
--- Insertar municipios de prueba
-INSERT INTO municipios (nombre, region) VALUES 
-('San Salvador', 'Cuscatlán'),
-('Soyapango', 'San Salvador'),
-('Santa Tecla', 'La Libertad');
-
--- Verificar datos
-SELECT * FROM municipios;
-```
-
-## 6. Configuración de Redis
-
-### 6.1 Instalar Redis (Windows)
-
-**Opción 1**: Usando Windows Subsystem for Linux (WSL)
-```powershell
-# En WSL:
-wsl
-sudo apt-get install redis-server
-redis-server
-```
-
-**Opción 2**: Usando Docker (si tienes Docker instalado)
-```powershell
-docker run -d -p 6379:6379 redis:latest
-```
-
-**Opción 3**: Descargar Redis para Windows
-```powershell
-# Descargar desde: https://github.com/microsoftarchive/redis/releases
-# Ejecutar: redis-server.exe
-```
-
-### 6.2 Instalar Redis (macOS)
-
+#### Verificación rápida de tablas:
+Para asegurar que todo se haya creado correctamente, ejecuta:
 ```bash
-brew install redis
-brew services start redis
+psql -U postgres -d aguasabia -c "\dt"
 ```
+Deberías ver listadas las siguientes 5 tablas principales:
+- `regiones`
+- `comunas`
+- `agricultores`
+- `parcelas`
+- `balances_hidricos`
 
-### 6.3 Instalar Redis (Linux)
-
+### Paso 7 — Cargar los datos semilla (Seed)
+Ejecuta el script de poblamiento inicial para cargar en la base de datos las regiones y comunas de Chile que presentan decretos de escasez hídrica:
 ```bash
 sudo apt-get install redis-server
 sudo service redis-server start
 ```
+
+Notas sobre `seed.py`:
+
+- El script ahora crea también un `Municipio` de ejemplo (Municipio Copiapó) y un `Administrador` por defecto.
+- Credenciales del administrador generado:
+   - Email: `admin@aguasabia.cl`
+   - Contraseña inicial: `Admin1234!`
+
+Por seguridad, cambia la contraseña tras el primer login o ajusta el script si quieres otra contraseña.
 
 ### 6.4 Verificar Conexión a Redis
 
@@ -373,116 +257,48 @@ venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload
 ```
 
-### 9.2 "could not connect to server: Connection refused"
+El backend estará disponible en:
+- **API Base**: `http://localhost:8000`
+- **Documentación Interactiva (Swagger UI)**: `http://localhost:8000/docs`
+- **Documentación Alternativa (Redoc)**: `http://localhost:8000/redoc`
 
-**Causa**: PostgreSQL no está ejecutándose.
+### Paso 9 — Iniciar Celery (Tareas en segundo plano)
+Celery se encarga de procesar tareas costosas o asíncronas (como la futura sincronización climática). Abre **una nueva ventana de terminal**, accede a `Proyecto/backend`, activa tu entorno virtual e inicia el worker:
 
-**Solución**:
-```powershell
-# Verificar PostgreSQL está ejecutándose
-# En Windows: Services > PostgreSQL
-
-# O reiniciar:
-# Windows: net start postgresql-x64-15
-# macOS: brew services restart postgresql
-# Linux: sudo service postgresql restart
-
-# Verificar conexión
-psql -U postgres -d postgres
+**Comando recomendado para Windows (modo mono-hilo para desarrollo local):**
+```bash
+celery -A app.worker.celery_app worker --loglevel=info --pool=solo
 ```
 
-### 9.3 "ERROR [Errno 111] Connection refused" (Redis)
+---
 
-**Causa**: Redis no está ejecutándose.
+## Tabla Resumen de Comandos
 
-**Solución**:
-```powershell
-# Iniciar Redis
-redis-server
+| Acción | Comando |
+| :--- | :--- |
+| **Activar entorno virtual** | `.venv\Scripts\Activate.ps1` (Win) o `source .venv/bin/activate` (Mac/Linux) |
+| **Instalar dependencias** | `pip install -r requirements.txt` |
+| **Generar primera migración** | `python -m alembic revision --autogenerate -m "descripcion"` |
+| **Aplicar cambios / migrar** | `python -m alembic upgrade head` |
+| **Cargar datos iniciales** | `python scripts/seed.py` |
+| **Iniciar servidor de API** | `uvicorn app.main:app --reload` |
+| **Iniciar Celery Workers** | `celery -A app.worker.celery_app worker --loglevel=info --pool=solo` |
 
-# O verificar que está corriendo
-redis-cli PING
-```
+---
 
-### 9.4 "psycopg2.OperationalError: FATAL: password authentication failed"
+## Solución de Problemas Comunes
 
-**Causa**: Contraseña incorrecta en DATABASE_URL.
+### 🔴 `ModuleNotFoundError: No module named 'app'`
+Este error ocurre cuando ejecutas `uvicorn` o `alembic` desde la carpeta incorrecta. Asegúrate de estar en `Proyecto/backend` antes de lanzar los comandos.
 
-**Solución**:
-```env
-# Verificar DATABASE_URL en .env
-DATABASE_URL=postgresql://postgres:CONTRASEÑA_CORRECTA@localhost:5432/aguasabia
+### 🔴 `sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection refused`
+PostgreSQL no está corriendo en el puerto `5432` o tus credenciales en el archivo `.env` son incorrectas.
+- **En Windows**: Revisa que el servicio "postgresql-x64-XX" esté iniciado en el panel de Servicios de Windows.
 
-# Verificar que la contraseña es correcta
-psql -U postgres -d aguasabia
-```
+### 🔴 `connection refused` al conectar con Redis
+Redis no está encendido o no está escuchando en `localhost:6379`.
+- Si usas Docker para Redis local, asegúrate de levantar el contenedor: `docker start redis` o `docker run -d -p 6379:6379 --name redis redis`.
+- Si usas WSL, inicia el servicio: `sudo service redis-server start`.
 
-### 9.5 "Pydantic v2 expected but v1 found"
-
-**Causa**: Versión incorrecta de Pydantic.
-
-**Solución**:
-```powershell
-pip uninstall pydantic -y
-pip install pydantic==2.13.3
-pip install -r requirements.txt
-```
-
-## 10. Detener Servicios
-
-```powershell
-# Detener Backend (Ctrl+C en terminal uvicorn)
-CTRL+C
-
-# Detener Celery Worker (Ctrl+C en terminal celery)
-CTRL+C
-
-# Detener PostgreSQL (Windows)
-net stop postgresql-x64-15
-
-# O desde el backend:
-# Desactivar venv
-deactivate
-```
-
-## 11. Script de Instalación Rápida
-
-Para automatizar todo el proceso:
-
-```powershell
-# setup.ps1
-python -m venv venv
-venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python -c "
-from app.db.base import Base
-from app.db.session import engine
-from app.models.agricultor import Agricultor
-from app.models.municipio import Municipio
-from app.models.parcela import Parcela
-from app.models.balance import BalanceHidrico
-Base.metadata.create_all(bind=engine)
-print('Base de datos creada exitosamente')
-"
-echo "Instalación completada. Ejecuta: uvicorn app.main:app --reload"
-```
-
-Ejecución:
-```powershell
-.\setup.ps1
-```
-
-## 12. Resumen de Configuración
-
-**Estado de prueba**:
-- ✅ Backend ejecutándose en `http://localhost:8000`
-- ✅ PostgreSQL conectado en `localhost:5432`
-- ✅ Redis conectado en `localhost:6379`
-- ✅ Celery worker escuchando tareas
-- ✅ CORS configurado para orígenes locales
-- ✅ JWT tokens con expiración de 8 días
-
-**Próximos pasos**:
-- Conectar frontend a `http://localhost:8000/api/v1`
-- Ejecutar tests de endpoints
-- Configurar más datos de prueba en PostgreSQL
+### 🔴 `FAILED: Target database is not up to date`
+La base de datos tiene un historial de Alembic diferente al código. Ejecuta `python -m alembic upgrade head` para sincronizar las migraciones.
