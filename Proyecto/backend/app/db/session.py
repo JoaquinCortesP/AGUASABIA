@@ -2,9 +2,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
-# Engine para conectarse a PostgreSQL
-# Utilizamos pool_pre_ping para revisar la conexión antes de usarla
-engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
+# Convertir la URL al formato que usa psycopg3
+# psycopg3 usa 'postgresql+psycopg://' en vez de 'postgresql://'
+db_url = str(settings.DATABASE_URL).replace(
+    "postgresql://", "postgresql+psycopg://"
+)
 
-# SessionLocal será la clase para instanciar sesiones de base de datos
+# Engine para conectarse a PostgreSQL
+# pool_pre_ping revisa que la conexión esté viva antes de usarla
+engine = create_engine(db_url, pool_pre_ping=True)
+
+# SessionLocal es la fábrica de sesiones de base de datos
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
