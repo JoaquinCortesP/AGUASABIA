@@ -1,0 +1,288 @@
+💧 AGUASABIA: DOCUMENTO MAESTRO INTERNO
+Clasificación: Confidencial / Uso Interno del Equipo. Autores: Sofía Araya & Joaquín Cortés. Objetivo del Documento: Consolidar toda la lógica de negocio, fórmulas (FAO-56), stack tecnológico, integración de APIs y arquitectura para el desarrollo del MVP de AguaSabia.
+
+1. VISIÓN GENERAL (NUESTRO "CORE")
+AguaSabia es un Centro de Mando Municipal (B2G - Business to Government) que centraliza la gestión hídrica de un territorio. Nuestra gran ventaja competitiva es que no vendemos sensores (hardware) ni requerimos que los agricultores inviertan en ellos.
+Vendemos el procesamiento inteligente de datos climáticos públicos y satelitales para convertirlos en indicaciones de riego ultra precisas y simples, enviadas por WhatsApp para la Agricultura Familiar Campesina (AFC).
+Nuestras tres promesas:
+Ahorrar agua en la comuna.
+Ahorrarle dinero en electricidad al agricultor.
+Darle al municipio una herramienta de gestión política y social de alto impacto.
+
+2. EL MOTOR AGRONÓMICO Y MATEMÁTICO (CÓMO CALCULAMOS EL RIEGO)
+La innovación principal radica en un motor matemático automatizado basado en el estándar FAO-56 para el balance hídrico del suelo.
+ El sistema estima cuánta agua pierde el cultivo y simula la capacidad del suelo para retenerla, permitiendo calcular con precisión cuándo y cuánto regar.
+
+1. Cálculo de evapotranspiración del cultivo (ETc)
+Base del modelo FAO-56:
+ETc = ET0 * Kc
+Donde:
+ET0: evapotranspiración de referencia (mm/día) → Open-Meteo
+Kc: coeficiente de cultivo → base de datos (según cultivo)
+
+2. Parámetros del suelo
+Se obtienen desde SoilGrids y se estiman con pedotransferencia:
+θ_fc → capacidad de campo
+θ_wp → punto de marchitez permanente
+También:
+Zr: profundidad radicular (m) → depende del cultivo
+
+3. Capacidad de almacenamiento del suelo
+Agua Total Disponible (TAW)
+TAW = 1000 * (θ_fc - θ_wp) * Zr
+Unidades: mm
+
+Fracción de agotamiento (p)
+p = p_tabla + 0.04 * (5 - ETc)
+Donde:
+p_tabla: valor base FAO (por cultivo)
+
+Agua fácilmente disponible (RAW)
+RAW = TAW * p
+
+4. Balance hídrico diario (Dr)
+Dr_hoy = Dr_ayer - lluvia_efectiva + ETc
+Donde:
+lluvia_efectiva = lluvia * 0.7
+
+Restricción física
+0 ≤ Dr ≤ TAW
+
+Inicialización
+Dr_0 = 0
+(Suelo en capacidad de campo)
+
+5. Cálculo de la recomendación diaria de riego
+Aquí está el cambio clave del sistema.
+
+5.1 Déficit utilizable para riego
+agua_a_regar_mm = max(0, Dr_hoy - RAW)
+Interpretación:
+Si el suelo aún está dentro de RAW → riego bajo o nulo
+Si supera RAW → riego necesario
+
+5.2 Estrategia de riego (optimizada)
+Para evitar sobre-riego, se usa reposición parcial:
+agua_objetivo_mm = Dr_hoy - α * RAW
+Donde:
+α ∈ [0.3, 0.7] (recomendado: 0.5)
+Luego:
+agua_a_regar_mm = max(0, agua_objetivo_mm)
+
+5.3 Conversión a volumen (litros)
+litros = (agua_a_regar_mm * area_m2) / eficiencia
+Donde:
+eficiencia:
+goteo ≈ 0.9
+aspersión ≈ 0.7
+
+6. Clasificación del estado hídrico (para mensaje)
+No es una alerta, es contexto para la recomendación:
+Si Dr < 0.5 * RAW → Estado: Óptimo
+Si 0.5 * RAW ≤ Dr < RAW → Estado: Preventivo
+Si Dr ≥ RAW → Estado: Déficit (requiere riego)
+
+7. Ajustes avanzados (mejoran mucho el sistema)
+7.1 Ajuste por lluvia del día
+Si hubo lluvia significativa:
+Si lluvia_efectiva ≥ ETc:
+  agua_a_regar_mm = 0
+
+7.2 Límite superior de riego
+Evita saturación:
+agua_a_regar_mm ≤ (TAW - Dr_hoy)
+
+7.3 Suavizado diario (opcional)
+Para evitar cambios bruscos:
+riego_final = 0.7 * riego_hoy + 0.3 * riego_ayer
+
+8. Resultado final del sistema
+Para cada parcela, cada día:
+Se calcula:
+ETc
+Dr_hoy
+RAW
+Litros recomendados
+Y se entrega:
+"Hoy debes aplicar X litros de agua en tu parcela"
+Opcionalmente:
+Estado hídrico: Óptimo / Preventivo / Déficit
+
+9. Resumen conceptual (clave para defensa)
+El sistema:
+Modela el suelo como un reservorio dinámico de agua
+Estima pérdidas mediante ETc (FAO-56)
+Simula disponibilidad con TAW y RAW
+Calcula el déficit diario (Dr)
+Entrega una recomendación continua y preventiva
+
+10. Pseudocódigo completo
+ETc = ET0 * Kc
+
+lluvia_efectiva = lluvia * 0.7
+
+Dr_hoy = Dr_ayer - lluvia_efectiva + ETc
+Dr_hoy = max(0, min(Dr_hoy, TAW))
+
+RAW = TAW * p
+
+agua_objetivo = Dr_hoy - 0.5 * RAW
+agua_mm = max(0, agua_objetivo)
+
+if lluvia_efectiva >= ETc:
+   agua_mm = 0
+
+agua_mm = min(agua_mm, TAW - Dr_hoy)
+
+litros = (agua_mm * area_m2) / eficiencia
+
+
+
+AguaSabia es un ecosistema de grado empresarial, diseñado para procesos concurrentes sin caídas de servidor.
+3.1.
+Stack Tecnológico Base
+Tecnología
+Rol en la Arquitectura
+Justificación Técnica
+Python (FastAPI)
+Backend (Motor Core)
+Alto rendimiento asíncrono para matemáticas y múltiples APIs externas.
+React.js (Vite)
+Frontend (Dashboard B2G)
+Interfaces dinámicas y rápidas.
+PostgreSQL
+Base de Datos
+Modelo multitenant: Municipio -> Agricultor -> Suelo/Cultivo.
+Redis
+Caché y Message Broker
+Almacena clima para evitar saturar APIs. Encola alertas masivas.
+Celery
+Background Workers
+Procesa colas (FIFO) para enviar miles de WhatsApps en segundo plano.
+
+3.2.
+Integración de APIs Externas
+Mapeo y Extracción de Suelo (Leaflet + SoilGrids):
+Frontend (Leaflet): El usuario dibuja un polígono de la hectárea en el mapa. Leaflet captura las coordenadas (Lat/Lng) y calcula el centroide (punto central exacto).
+Backend (ISRIC SoilGrids REST API): Recibe el centroide y hace un GET a SoilGrids buscando arcilla (clay), arena (sand) y densidad aparente (bdod) para calcular la retención de agua.
+Clima Diario (Open-Meteo API):
+Es gratuita y sin Key. Extrae precipitación y el $ET_0$ diario mediante coordenadas geográficas.
+Validación Satelital (Sentinel-2 Agri API / MODIS / GOES):
+Sentinel-2: Permite validar la salud real del cultivo mediante el NDVI (Banda Infrarrojo Cercano + Rojo) y evaluar el estrés hídrico de la hoja con el NDWI (Banda Verde + Infrarrojo Cercano).
+Nota: Para escalas comunales más grandes (como alertas de incendios), consideraremos usar satélites de menor resolución pero mayor frecuencia (VIIRS/MODIS, GOES-16).
+Canal de Comunicación (Meta Graph API - WhatsApp Business):
+Única vía oficial. Requiere crear una app en Meta for Developers para obtener el Token.
+Regla de Meta: Para iniciar conversaciones B2G a las 06:00 AM, el backend debe enviar "Plantillas (Templates)" preaprobadas por Meta con variables (Ej: "Hola {{1}}, hoy riegue {{2}} litros").
+
+4. MODELO DE NEGOCIO Y FINANZAS (B2G)
+Variables a mostrar en el Dashboard de Impacto Municipal:
+Consumo base: $10.000 m^3$ por Hectárea al año.
+Ahorro AguaSabia: 20% ($2.000 m^3$ ahorrados por Hectárea/año).
+Costo de energía: $65 CLP por cada $1m^3$ bombeado.
+Estructura de Cobro al Municipio:
+Setup / Implementación: $1.500.000 CLP (Pago único por Compra Ágil).
+Mantención Mensual (SaaS):
+Pequeño (1-100 usuarios): Cobro $150.000 | Costo $45.000 | Ganancia $105.000
+Mediano (101-300 usuarios): Cobro $350.000 | Costo $85.000 | Ganancia $265.000
+Grande (301-500 usuarios): Cobro $500.000 | Costo $130.000 | Ganancia $370.000
+
+5. MÓDULO A FUTURO: ALERTA DE INCENDIOS FORESTALES 🌲🔥
+Agregaremos valor inmenso sin costo extra para nosotros aprovechando la extracción climática diaria de Open-Meteo y satélites (GOES/MODIS).
+La Regla del "30-30-30": Riesgo extremo si mañana se proyecta:
+Temperatura: > 30°C.
+Humedad Relativa: < 30%.
+Viento: > 30 km/h.
+Flujo:
+Dashboard: Alerta ROJA en la pantalla del municipio.
+WhatsApp: Mensaje extra: "⚠️ ALERTA: Don Juan, mañana alto riesgo de incendio. No realice quemas agrícolas."
+
+6. HOJA DE RUTA Y FLUJO DE DATOS
+PASO 1: Historias de Usuario Principales
+HU1 (Dashboard): Admin ve mapa con agricultores.
+HU2 (Registro): Admin registra productor y dibuja su parcela.
+HU3 (Motor ET0): Backend guarda el clima diario en Redis (Caché).
+HU4 (WhatsApp): Sistema encola cientos de notificaciones a las 06:00 AM para agricultores.
+PASO 2: Diagrama de Base de Datos Municipio -> Agricultor -> Cultivo -> Log_Riego
+PASO 3: El Flujo del Motor (CRON + Celery + Redis)
+06:00 AM: Celery Beat dispara la tarea programada.
+Consulta a PostgreSQL: Obtiene usuarios.
+Consulta a Redis: Verifica si el $ET_0$ zonal está cacheado. Si no, lo extrae de Open-Meteo y lo guarda en Redis.
+FastAPI calcula el balance ($D_r$) y los litros.
+Si hay estrés, inserta la tarea Enviar_Mensaje_WSP a la cola de Redis.
+Los Background Workers de Celery procesan la cola y envían la plantilla a Meta Graph API uno por uno.
+
+7. ESTRUCTURA DE CARPETAS DEL PROYECTO
+Backend (FastAPI + Celery + Redis)
+Plaintext
+aguasabia-backend/ [cite: 152]
+├── app/ [cite: 153]
+│   ├── main.py                 # Instancia FastAPI [cite: 154]
+│   ├── database.py             # Conexión PostgreSQL [cite: 155]
+│   ├── redis_client.py         # Conexión Redis [cite: 156]
+│   ├── celery_worker.py        # Configuración Celery Workers [cite: 157]
+│   ├── models/                 # Modelos SQLAlchemy [cite: 158]
+│   ├── schemas/                # Schemas Pydantic [cite: 159]
+│   ├── routers/                # Endpoints API [cite: 160]
+│   └── services/ [cite: 161]
+│       ├── meteo_service.py    # Open-Meteo + SoilGrids Logic [cite: 162]
+│       ├── math_service.py     # Lógica agronómica (FAO-56) [cite: 163]
+│       └── whatsapp_tasks.py   # Integración Meta Graph API [cite: 164]
+├── requirements.txt            # fastapi, sqlalchemy, redis, celery... [cite: 165]
+└── .env                        # DB_URL, REDIS_URL, META_WSP_TOKEN [cite: 166]
+
+Frontend (React + Vite)
+Plaintext
+aguasabia-frontend/ [cite: 169]
+├── src/ [cite: 170]
+│   ├── components/         # Mapas Leaflet, Modales [cite: 171]
+│   ├── context/            # AuthContext [cite: 172]
+│   ├── pages/              # Vistas principales del Dashboard [cite: 173]
+│   ├── services/           # Axios calls hacia FastAPI [cite: 174]
+│   ├── App.jsx [cite: 175]
+│   └── main.jsx [cite: 176]
+├── package.json            # react, leaflet, axios, tailwindcss [cite: 177]
+└── vite.config.js [cite: 178]
+     
+
+8. FLUJO DE DATOS Y RESPUESTAS API (Ciclo de Vida de la Información)
+Este es el recorrido secuencial de los datos, desde que el municipio registra una parcela hasta que el agricultor recibe su instrucción de riego.
+ETAPA 1: Setup del Predio (Se ejecuta una sola vez al registrar)
+1. Georeferenciación (Frontend -> Backend)
+Herramienta: Leaflet.
+Acción: El administrador dibuja el polígono de la hectárea.
+Dato de salida: Coordenadas de los vértices y el punto central exacto (Centroide).
+2. Extracción de Suelo (API Externa)
+Llamada a: ISRIC SoilGrids REST API.
+Input (Payload enviado): Latitud y Longitud del Centroide.
+Output (Respuesta de API): Porcentajes físicos del suelo: Arena (sand), Arcilla (clay), y Densidad Aparente (bdod).
+Transformación Interna (Backend): Usando las ecuaciones de Saxton-Rawls, transformamos esos porcentajes en nuestras constantes hídricas: $\theta_{fc}$ (Capacidad de Campo) y $\theta_{wp}$ (Punto de Marchitez).
+Cálculo Final Guardado en Base de Datos: $TAW$ (Agua Total Disponible) basado en el tamaño de la raíz ($Z_r$) de esa parcela.
+
+ETAPA 2: El Motor Diario (Se ejecuta todos los días de madrugada)
+3. Extracción de Clima (API Externa)
+Llamada a: Open-Meteo API.
+Input (Payload enviado): Latitud y Longitud de la parcela.
+Output (Respuesta de API): Precipitación de las últimas 24 hrs y el $ET_0$ (Evapotranspiración de Referencia).
+Transformación Interna (Backend): Multiplicamos el $ET_0$ por el Coeficiente de Cultivo ($K_c$) para obtener la pérdida real de la planta ($ET_c$).
+4. Validación Satelital de Salud (Opcional / Periódica)
+Llamada a: Sentinel-2 Agri API (o Copernicus).
+Input (Payload enviado): Polígono geográfico y fechas.
+Output (Respuesta de API): Bandas espectrales (Banda 3, Banda 4, Banda 8).
+Transformación Interna (Backend): Calculamos índices NDVI (salud) y NDWI (estrés hídrico foliar) para cruzarlo con nuestros datos teóricos y ajustar el algoritmo si la planta muestra anomalías físicas.
+
+ETAPA 3: Decisión y Acción (Se ejecuta a las 05:00 AM)
+5. La Condición de Disparo (Algoritmo Interno)
+Acción: El sistema actualiza el balance hídrico:
+$$D_{r,hoy} = D_{r,ayer} - Lluvia - Riego + ET_c$$
+Evaluación Lógica: El backend pregunta: ¿El Agotamiento ($D_{r,hoy}$) superó el umbral de Agua Fácilmente Disponible ($RAW$)?
+SI NO lo supera: No hace nada. La planta está bien.
+SI SÍ lo supera: Entra en estrés. Pasa al siguiente paso.
+6. Traducción Agronómica a Volumen
+Transformación Interna (Backend): Convierte los milímetros de agua que faltan ($D_{r,hoy}$) en litros exactos, multiplicando los milímetros por los metros cuadrados totales de la parcela del usuario.
+7. Notificación al Agricultor (API Externa)
+Llamada a: Meta Graph API (WhatsApp Business).
+Cola de Trabajo: La solicitud se envía primero a Redis/Celery para que no colapse el servidor.
+Input (Payload enviado a Meta): * Número de teléfono del agricultor.
+ID de la Plantilla (Template preaprobado por Meta).
+Variables dinámicas: {{Nombre}} y {{Litros_a_regar}}.
+Output Final: Don Juan recibe un WhatsApp a las 06:00 AM diciendo: "AguaSabia informa: Don Juan, hoy su cultivo de paltos necesita reponer X litros de agua para evitar estrés."
