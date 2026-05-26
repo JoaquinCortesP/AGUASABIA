@@ -138,6 +138,18 @@ Sigue estos dos comandos en orden:
    ```bash
    python -m alembic upgrade head
    ```
++
++### Recuperar Alembic cuando falta una revisión previa
++Si tu base de datos ya contiene la tabla `alembic_version` y apunta a una revisión que no existe en `alembic/versions/`, Alembic fallará con un error como:
++`Can't locate revision identified by '66148a459850'`.
++
++En ese caso:
++1. Crea un archivo placeholder con el nombre de la revisión faltante dentro de `alembic/versions/`.
++2. Asegúrate de que `app/models/__init__.py` importa todos los nuevos modelos, incluidos `Municipio` y `Administrador`.
++3. Vuelve a ejecutar `python -m alembic revision --autogenerate -m "migracion inicial"`.
++4. Aplica la migración con `python -m alembic upgrade head`.
++
++Esto restaura el historial de Alembic y permite que la base de datos se actualice con las nuevas tablas y columnas.
 
 #### Verificación rápida de tablas:
 Para asegurar que todo se haya creado correctamente, ejecuta:
