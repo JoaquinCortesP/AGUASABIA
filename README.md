@@ -8,7 +8,7 @@ El sistema cuenta con un backend robusto basado en **FastAPI** que implementa el
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Stack Tecnológico
 
 - **FastAPI**: Framework web asíncrono de alto rendimiento para Python.
 - **SQLAlchemy 2.0**: ORM de Python para mapeo de entidades de base de datos.
@@ -19,7 +19,7 @@ El sistema cuenta con un backend robusto basado en **FastAPI** que implementa el
 
 ---
 
-## 📂 Estructura de Documentación
+## Estructura de Documentación
 
 Toda la documentación del proyecto se encuentra consolidada y sincronizada bajo el directorio [Documentacion](Documentacion):
 
@@ -41,7 +41,7 @@ Toda la documentación del proyecto se encuentra consolidada y sincronizada bajo
 
 ---
 
-## 🚀 Instalación Rápida (Entorno Local)
+## Instalación Rápida (Entorno Local)
 
 Para iniciar el backend en tu máquina local:
 
@@ -100,5 +100,5 @@ celery -A app.worker.celery_app worker --loglevel=info --pool=solo
 
 ---
 
-## 🔌 Próximos Pasos (Fase de Producción)
+## Próximos Pasos (Fase de Producción)
 Las integraciones automáticas con **Open-Meteo API** (clima diario) e **ISRIC SoilGrids API** (datos de suelo) están diseñadas conceptualmente mediante stubs en [agronomy.py](Proyecto/backend/app/services/agronomy.py). Para completar estas implementaciones en fases futuras, revisa las fórmulas de balance especificadas en el documento de especificación técnica interna [DocumentacionPersonal.txt](DocumentacionPersonal.txt).
