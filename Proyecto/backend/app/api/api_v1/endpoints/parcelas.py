@@ -76,12 +76,13 @@ def read_parcelas(
         db.query(Parcela)
         .join(Agricultor, Parcela.agricultor_id == Agricultor.id)
         .filter(Agricultor.municipio_id == current_admin.municipio_id)
+        .order_by(Parcela.id.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
 
-@router.post("/", response_model=ParcelaSchema)
+@router.post("/", response_model=ParcelaSchema, status_code=201)
 def create_parcela(
     *,
     db: Session = Depends(deps.get_db),

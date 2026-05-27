@@ -28,7 +28,7 @@ def read_agricultores(
     )
 
 
-@router.post("/", response_model=AgricultorSchema)
+@router.post("/", response_model=AgricultorSchema, status_code=201)
 def create_agricultor(
     *,
     db: Session = Depends(deps.get_db),
