@@ -6,14 +6,10 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.models.administrador import Administrador
 from app.models.agricultor import Agricultor
-<<<<<<< HEAD
-from app.models.administrador import Administrador
-=======
 from app.models.balance_hidrico import BalanceHidrico
 from app.models.comuna import Comuna
 from app.models.parcela import Parcela
 from app.schemas.clima import RecomendacionRiego
->>>>>>> Joaquin/branch
 from app.schemas.parcela import Parcela as ParcelaSchema, ParcelaCreate
 from app.services.agronomy import calcular_recomendacion_riego
 from app.services.clima_service import (
@@ -76,25 +72,14 @@ def read_parcelas(
     limit: int = 100,
     current_admin: Administrador = Depends(deps.get_current_admin),
 ) -> Any:
-<<<<<<< HEAD
-    parcelas = (
-        db.query(Parcela)
-        .filter(Parcela.comuna_id == current_admin.municipio.comuna_id)
-=======
     return (
         db.query(Parcela)
         .join(Agricultor, Parcela.agricultor_id == Agricultor.id)
         .filter(Agricultor.municipio_id == current_admin.municipio_id)
->>>>>>> Joaquin/branch
         .offset(skip)
         .limit(limit)
         .all()
     )
-<<<<<<< HEAD
-    return parcelas
-=======
-
->>>>>>> Joaquin/branch
 
 @router.post("/", response_model=ParcelaSchema)
 def create_parcela(
@@ -103,26 +88,6 @@ def create_parcela(
     parcela_in: ParcelaCreate,
     current_admin: Administrador = Depends(deps.get_current_admin),
 ) -> Any:
-<<<<<<< HEAD
-    if parcela_in.comuna_id != current_admin.municipio.comuna_id:
-        raise HTTPException(
-            status_code=400,
-            detail="La parcela debe pertenecer a la comuna del municipio del administrador.",
-        )
-
-    agricultor = (
-        db.query(Agricultor)
-        .filter(
-            Agricultor.id == parcela_in.agricultor_id,
-            Agricultor.municipio_id == current_admin.municipio_id,
-        )
-        .first()
-    )
-    if not agricultor:
-        raise HTTPException(status_code=404, detail="Agricultor no encontrado en el municipio del admin")
-
-    parcela = Parcela(**parcela_in.model_dump())
-=======
     _get_agricultor_municipal(db, parcela_in.agricultor_id, current_admin)
     _validar_comuna_municipal(db, parcela_in.comuna_id, current_admin)
 
@@ -133,7 +98,6 @@ def create_parcela(
         payload["longitud"] = centroide["longitud"]
 
     parcela = Parcela(**payload)
->>>>>>> Joaquin/branch
     db.add(parcela)
     db.commit()
     db.refresh(parcela)

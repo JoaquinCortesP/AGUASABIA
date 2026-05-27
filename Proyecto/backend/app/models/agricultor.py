@@ -12,10 +12,5 @@ class Agricultor(Base):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean(), default=True)
     municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=True)
-
     municipio = relationship("Municipio", back_populates="agricultores")
-<<<<<<< HEAD
     parcelas = relationship("Parcela", back_populates="agricultor")
-=======
-    parcelas = relationship("Parcela", back_populates="agricultor")
->>>>>>> Joaquin/branch
