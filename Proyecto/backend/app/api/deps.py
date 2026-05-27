@@ -1,41 +1,57 @@
 from typing import Generator
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from app.db.session import SessionLocal
+
 from app.core.config import settings
-from app.models.agricultor import Agricultor
+from app.db.session import SessionLocal
+from app.models.administrador import Administrador
 from app.schemas.token import TokenPayload
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
+    tokenUrl=f"{settings.API_V1_STR}/auth/access-token"
 )
 
+
 def get_db() -> Generator:
-    # Dependencia para inyectar la sesión de base de datos en las rutas
     try:
         db = SessionLocal()
         yield db
     finally:
         db.close()
 
-def get_current_user(
+
+def get_current_admin(
     db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
-) -> Agricultor:
-    # Función para obtener el agricultor actual (usuario) a partir del token JWT
+) -> Administrador:
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=["HS256"]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         token_data = TokenPayload(**payload)
     except (JWTError, ValidationError):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No se pudo validar las credenciales",
         )
-    user = db.query(Agricultor).filter(Agricultor.id == token_data.sub).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return user
+
+    if token_data.role != "admin" or token_data.sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Token sin permisos de administrador",
+        )
+
+    admin = db.query(Administrador).filter(Administrador.id == int(token_data.sub)).first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Administrador no encontrado")
+    if not admin.is_active:
+        raise HTTPException(status_code=400, detail="Administrador inactivo")
+    return admin
+
+
+def get_current_user(
+    current_admin: Administrador = Depends(get_current_admin),
+) -> Administrador:
+    # Alias temporal para compatibilidad con endpoints antiguos.
+    return current_admin

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Float
+from sqlalchemy import Column, ForeignKey, Integer, String, Float, JSON
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -12,6 +12,7 @@ class Parcela(Base):
     tipo_cultivo = Column(String, nullable=True)
     latitud = Column(Float, nullable=True)
     longitud = Column(Float, nullable=True)
+    poligono_vertices = Column(JSON, nullable=True)
     agricultor_id = Column(Integer, ForeignKey("agricultores.id"), nullable=True)
     comuna_id = Column(Integer, ForeignKey("comunas.id"), nullable=True)
 
