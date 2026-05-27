@@ -69,25 +69,3 @@ def list_agricultores(
         Agricultor.municipio_id == current_admin.municipio_id
     ).all()
     return agricultores
-
-@router.post("/register", response_model=Administrador)
-def register_admin(
-    admin_in: AdministradorCreate,
-    db: Session = Depends(deps.get_db),
-):
-    if db.query(AdministradorModel).filter(AdministradorModel.email == admin_in.email).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email ya existe",
-        )
-    admin = AdministradorModel(
-        nombre=admin_in.nombre,
-        email=admin_in.email,
-        hashed_password=get_password_hash(admin_in.password),
-        municipio_id=admin_in.municipio_id,
-        is_active=True,
-    )
-    db.add(admin)
-    db.commit()
-    db.refresh(admin)
-    return admin

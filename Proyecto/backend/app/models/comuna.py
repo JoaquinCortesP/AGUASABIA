@@ -14,8 +14,4 @@ class Comuna(Base):
     # Relaciones
     region = relationship("Region", back_populates="comunas")
     municipios = relationship("Municipio", back_populates="comuna")
-<<<<<<< HEAD
     parcelas = relationship("Parcela", back_populates="comuna")
-=======
-    parcelas = relationship("Parcela", back_populates="comuna")
->>>>>>> Joaquin/branch
