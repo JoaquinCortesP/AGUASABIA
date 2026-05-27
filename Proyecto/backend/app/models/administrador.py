@@ -13,4 +13,5 @@ class Administrador(Base):
     is_active = Column(Boolean(), default=True)
     municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=False)
 
+    # Relación
     municipio = relationship("Municipio", back_populates="administradores")

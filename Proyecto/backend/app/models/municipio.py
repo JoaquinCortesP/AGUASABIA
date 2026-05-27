@@ -11,6 +11,7 @@ class Municipio(Base):
     region_id = Column(Integer, ForeignKey("regiones.id"), nullable=False)
     comuna_id = Column(Integer, ForeignKey("comunas.id"), nullable=False)
 
+    # Relaciones
     region = relationship("Region", back_populates="municipios")
     comuna = relationship("Comuna", back_populates="municipios")
     administradores = relationship("Administrador", back_populates="municipio")

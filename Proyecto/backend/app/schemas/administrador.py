@@ -1,10 +1,10 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 
 class AdministradorBase(BaseModel):
     nombre: str
     email: EmailStr
-    is_active: bool = True
     municipio_id: int
 
 
@@ -14,6 +14,7 @@ class AdministradorCreate(AdministradorBase):
 
 class Administrador(AdministradorBase):
     id: int
+    is_active: bool
 
     class Config:
         from_attributes = True

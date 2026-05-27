@@ -1,119 +1,93 @@
-from datetime import date
-from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.api.deps import get_current_admin, get_db
-from app.core import security
+from app.api import deps
 from app.models.administrador import Administrador
 from app.models.agricultor import Agricultor
-from app.models.parcela import Parcela
-from app.models.balance_hidrico import BalanceHidrico
-from app.schemas.agricultor import AgricultorCreate
-from app.schemas.parcela import ParcelaCreate, Parcela as ParcelaSchema
-from app.schemas.balance_hidrico import BalanceHidrico as BalanceSchema
-from app.schemas.administrador import Administrador as AdministradorSchema
-from app.services.agronomico import AgronomicoService
+from app.schemas.agricultor import Agricultor as AgricultorSchema, AgricultorCreate
 
 router = APIRouter()
 
 
-@router.get("/me", response_model=AdministradorSchema)
-def read_current_admin(current_admin: Administrador = Depends(get_current_admin)) -> Any:
-    return current_admin
+@router.get("/me")
+def get_current_admin_info(current_admin: Administrador = Depends(deps.get_current_admin)):
+    """
+    Obtener información del administrador actual.
+    """
+    return {
+        "id": current_admin.id,
+        "nombre": current_admin.nombre,
+        "email": current_admin.email,
+        "municipio_id": current_admin.municipio_id,
+    }
 
 
-class AgricultorWithParcelaCreate(AgricultorCreate):
-    parcela: ParcelaCreate
-
-
-@router.post("/agricultores", response_model=Any)
+@router.post("/agricultores", response_model=AgricultorSchema)
 def create_agricultor(
-    *,
-    db: Session = Depends(get_db),
-    payload: AgricultorWithParcelaCreate,
-    current_admin: Administrador = Depends(get_current_admin),
-) -> Any:
-    if payload.parcela.comuna_id != current_admin.municipio.comuna_id:
+    agricultor_data: AgricultorCreate,
+    db: Session = Depends(deps.get_db),
+    current_admin: Administrador = Depends(deps.get_current_admin),
+):
+    """
+    Crear un nuevo agricultor (solo admin).
+    """
+    # Verificar que el agricultor pertenezca al municipio del admin
+    if agricultor_data.municipio_id != current_admin.municipio_id:
         raise HTTPException(
-            status_code=400,
-            detail="La parcela debe pertenecer a la comuna del municipio del administrador.",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo puedes crear agricultores en tu municipio",
         )
-
-    existing = db.query(Agricultor).filter(Agricultor.email == payload.email).first()
+    
+    # Verificar email único
+    existing = db.query(Agricultor).filter(Agricultor.email == agricultor_data.email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="El agricultor ya existe.")
-
-    hashed_password = security.get_password_hash(payload.password)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email ya existe")
+    
+    # Crear agricultor
+    from app.core.security import get_password_hash
     agricultor = Agricultor(
-        nombre=payload.nombre,
-        email=payload.email,
-        hashed_password=hashed_password,
-        is_active=True,
-        municipio_id=current_admin.municipio_id,
+        nombre=agricultor_data.nombre,
+        email=agricultor_data.email,
+        hashed_password=get_password_hash(agricultor_data.password),
+        municipio_id=agricultor_data.municipio_id,
     )
     db.add(agricultor)
     db.commit()
     db.refresh(agricultor)
-
-    parcela = Parcela(**payload.parcela.model_dump(), agricultor_id=agricultor.id)
-    db.add(parcela)
-    db.commit()
-    db.refresh(parcela)
-
-    balance_data = AgronomicoService.crear_balance_inicial(parcela, date.today())
-    balance = BalanceHidrico(**balance_data, parcela_id=parcela.id)
-    db.add(balance)
-    db.commit()
-    db.refresh(balance)
-
-    return {
-        "agricultor": {
-            "id": agricultor.id,
-            "nombre": agricultor.nombre,
-            "email": agricultor.email,
-            "municipio_id": agricultor.municipio_id,
-        },
-        "parcela": {
-            "id": parcela.id,
-            "nombre": parcela.nombre,
-            "superficie": parcela.superficie,
-            "tipo_cultivo": parcela.tipo_cultivo,
-            "latitud": parcela.latitud,
-            "longitud": parcela.longitud,
-            "comuna_id": parcela.comuna_id,
-        },
-        "balance_inicial": {
-            "id": balance.id,
-            "fecha": balance.fecha,
-            "evapotranspiracion": balance.evapotranspiracion,
-            "precipitacion": balance.precipitacion,
-            "riego_sugerido": balance.riego_sugerido,
-            "humedad_suelo": balance.humedad_suelo,
-        },
-    }
+    
+    return agricultor
 
 
-@router.get("/agricultores", response_model=List[Any])
-def read_agricultores(
-    db: Session = Depends(get_db),
-    current_admin: Administrador = Depends(get_current_admin),
-    skip: int = 0,
-    limit: int = 100,
-) -> Any:
-    agricultores = (
-        db.query(Agricultor)
-        .filter(Agricultor.municipio_id == current_admin.municipio_id)
-        .offset(skip)
-        .limit(limit)
-        .all()
+@router.get("/agricultores")
+def list_agricultores(
+    db: Session = Depends(deps.get_db),
+    current_admin: Administrador = Depends(deps.get_current_admin),
+):
+    """
+    Listar todos los agricultores del municipio del admin.
+    """
+    agricultores = db.query(Agricultor).filter(
+        Agricultor.municipio_id == current_admin.municipio_id
+    ).all()
+    return agricultores
+
+@router.post("/register", response_model=Administrador)
+def register_admin(
+    admin_in: AdministradorCreate,
+    db: Session = Depends(deps.get_db),
+):
+    if db.query(AdministradorModel).filter(AdministradorModel.email == admin_in.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email ya existe",
+        )
+    admin = AdministradorModel(
+        nombre=admin_in.nombre,
+        email=admin_in.email,
+        hashed_password=get_password_hash(admin_in.password),
+        municipio_id=admin_in.municipio_id,
+        is_active=True,
     )
-    return [
-        {
-            "id": a.id,
-            "nombre": a.nombre,
-            "email": a.email,
-            "is_active": a.is_active,
-            "municipio_id": a.municipio_id,
-        }
-        for a in agricultores
-    ]
+    db.add(admin)
+    db.commit()
+    db.refresh(admin)
+    return admin
