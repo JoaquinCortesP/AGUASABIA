@@ -10,3 +10,6 @@ redis
 passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
+email-validator
+python-jose[cryptography]>=3.3.0
+cryptography>=3.4.8
