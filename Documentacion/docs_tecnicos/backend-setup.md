@@ -1,4 +1,4 @@
-# Configuración del Backend - AguaSabia
+# Guía de Configuración del Backend - AguaSabia
 
 Esta guía explica detalladamente cómo instalar, configurar y ejecutar el backend del proyecto desde cero. Está estructurada paso a paso para que cualquier integrante del equipo pueda levantar el entorno de desarrollo de forma autónoma.
 
@@ -20,10 +20,13 @@ Ejecuta los siguientes comandos en tu terminal (PowerShell en Windows, o Bash en
 # Verificar Python
 python --version
 
-# Verificar PostgreSQL (CLI)
+# Verificar pip
+pip --version
+
+# Verificar PostgreSQL
 psql --version
 
-# Verificar Redis (CLI)
+# Verificar Redis
 redis-cli --version
 ```
 
@@ -42,10 +45,10 @@ El entorno virtual aísla las librerías del proyecto de tu sistema global.
 
 **En Windows (PowerShell):**
 ```powershell
-# Crear el entorno virtual
-python -m venv .venv
+# Crear entorno virtual
+python -m venv venv
 
-# Activar el entorno virtual
+# Activar entorno virtual (Windows)
 .venv\Scripts\Activate.ps1
 ```
 
@@ -93,11 +96,15 @@ Antes de correr las migraciones, debes tener creada la base de datos vacía. Con
 
 ```bash
 psql -U postgres
+
+# O si PostgreSQL está en otra ubicación:
+C:\Program Files\PostgreSQL\15\bin\psql.exe -U postgres
 ```
 
-Una vez dentro de la consola interactiva de SQL, crea la base de datos `aguasabia` y sal del intérprete:
+### 3.2 Crear Base de Datos
 
 ```sql
+-- Dentro de psql:
 CREATE DATABASE aguasabia;
 \q
 ```
@@ -131,12 +138,122 @@ Deberías ver listadas las siguientes 5 tablas principales:
 ### Paso 7 — Cargar los datos semilla (Seed)
 Ejecuta el script de poblamiento inicial para cargar en la base de datos las regiones y comunas de Chile que presentan decretos de escasez hídrica:
 ```bash
-python scripts/seed.py
+sudo apt-get install redis-server
+sudo service redis-server start
 ```
 
-### Paso 8 — Iniciar el servidor de desarrollo (FastAPI)
-Para iniciar el servidor de FastAPI con recarga automática:
-```bash
+Notas sobre `seed.py`:
+
+- El script ahora crea también un `Municipio` de ejemplo (Municipio Copiapó) y un `Administrador` por defecto.
+- Credenciales del administrador generado:
+   - Email: `admin@aguasabia.cl`
+   - Contraseña inicial: `Admin1234!`
+
+Por seguridad, cambia la contraseña tras el primer login o ajusta el script si quieres otra contraseña.
+
+### 6.4 Verificar Conexión a Redis
+
+```powershell
+# Abrir otra terminal y ejecutar:
+redis-cli
+
+# Si aparece > entonces está conectado
+PING
+# Debe retornar: PONG
+
+# Salir:
+exit
+```
+
+## 7. Ejecutar el Backend
+
+### 7.1 Iniciar el Servidor de Desarrollo
+
+```powershell
+# Asegúrate de estar en el directorio backend con venv activado
+uvicorn app.main:app --reload
+```
+
+**Output esperado**:
+```
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started server process [1234]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+```
+
+### 7.2 Acceder a la Aplicación
+
+```
+URL Local:
+http://localhost:8000
+
+OpenAPI Documentation (Swagger UI):
+http://localhost:8000/docs
+
+Alternative API Documentation (ReDoc):
+http://localhost:8000/redoc
+
+Root endpoint:
+http://localhost:8000
+```
+
+### 7.3 Ejecutar Celery Worker (En otra terminal)
+
+```powershell
+# Activar venv en otra terminal
+
+# Windows
+celery -A app.workers.celery_app worker --loglevel=info
+
+# macOS/Linux
+celery -A app.workers.celery_app worker --loglevel=info
+```
+
+**Output esperado**:
+```
+[2024-05-13 10:30:00,000: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2024-05-13 10:30:00,123: INFO/MainProcess] mingle: searching for executable celery script in /path...
+[2024-05-13 10:30:00,456: INFO/MainProcess] celery@HOSTNAME ready.
+```
+
+## 8. Puertos y URLs Utilizados
+
+### 8.1 Puertos por Defecto
+
+| Servicio | Puerto | URL |
+|----------|--------|-----|
+| FastAPI (Backend) | 8000 | http://localhost:8000 |
+| PostgreSQL | 5432 | localhost:5432 |
+| Redis | 6379 | redis://localhost:6379 |
+| Swagger UI | 8000 | http://localhost:8000/docs |
+
+### 8.2 Variables en .env
+
+```env
+# FastAPI
+API_V1_STR=/api/v1
+
+# Base URLs (localhost:8000 + prefijo)
+BASE_URL=http://localhost:8000
+API_BASE_URL=http://localhost:8000/api/v1
+```
+
+## 9. Errores Comunes y Soluciones
+
+### 9.1 "ModuleNotFoundError: No module named 'app'"
+
+**Causa**: Estás en el directorio incorrecto o venv no está activado.
+
+**Solución**:
+```powershell
+# Asegúrate de estar en /AguaSabia/Proyecto/backend
+cd AguaSabia/Proyecto/backend
+
+# Activa el venv
+venv\Scripts\Activate.ps1
+
+# Intenta de nuevo
 uvicorn app.main:app --reload
 ```
 

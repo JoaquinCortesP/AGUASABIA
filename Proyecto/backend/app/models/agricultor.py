@@ -1,6 +1,7 @@
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from app.db.base import Base
+
 
 class Agricultor(Base):
     __tablename__ = "agricultores"
@@ -10,6 +11,6 @@ class Agricultor(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean(), default=True)
-
-    # Relación con las parcelas
+    municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=True)
+    municipio = relationship("Municipio", back_populates="agricultores")
     parcelas = relationship("Parcela", back_populates="agricultor")

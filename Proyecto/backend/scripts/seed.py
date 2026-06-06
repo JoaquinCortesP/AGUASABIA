@@ -1,12 +1,19 @@
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
+from app.core.security import get_password_hash
+from app.models.administrador import Administrador
 from app.models.region import Region
 from app.models.comuna import Comuna
+from app.models.municipio import Municipio
 
 def seed_db():
     db = SessionLocal()
     
-    # Datos proporcionados para inicializar
     data = {
         "Atacama": [
             ("Copiapó", "Escasez hídrica"),
@@ -136,9 +143,7 @@ def seed_db():
         ]
     }
     
-    # Insertar regiones y comunas
     for region_name, comunas_list in data.items():
-        # Verificamos si la región ya existe
         region = db.query(Region).filter_by(nombre=region_name).first()
         if not region:
             region = Region(nombre=region_name)
@@ -153,8 +158,42 @@ def seed_db():
                 db.add(comuna)
                 
     db.commit()
+
+    for comuna in db.query(Comuna).all():
+        municipio = db.query(Municipio).filter_by(comuna_id=comuna.id).first()
+        if not municipio:
+            municipio = Municipio(
+                nombre=f"Municipalidad de {comuna.nombre}",
+                region_id=comuna.region_id,
+                comuna_id=comuna.id,
+            )
+            db.add(municipio)
+
+    db.commit()
+
+    demo_municipio = db.query(Municipio).order_by(Municipio.id).first()
+    if demo_municipio:
+        demo_admin = db.query(Administrador).filter_by(email="admin@aguasabia.cl").first()
+        legacy_admin = db.query(Administrador).filter_by(email="admin@aguasabia.local").first()
+        if legacy_admin and not demo_admin:
+            legacy_admin.email = "admin@aguasabia.cl"
+            legacy_admin.municipio_id = demo_municipio.id
+            legacy_admin.is_active = True
+            demo_admin = legacy_admin
+        if not demo_admin:
+            demo_admin = Administrador(
+                nombre="Admin AguaSabia",
+                email="admin@aguasabia.cl",
+                hashed_password=get_password_hash("admin123"),
+                municipio_id=demo_municipio.id,
+                is_active=True,
+            )
+            db.add(demo_admin)
+        db.commit()
+
     db.close()
-    print("Base de datos inicializada correctamente.")
+    print("Base de datos inicializada correctamente. Admin creado con email admin@aguasabia.cl")
+
 
 if __name__ == "__main__":
     seed_db()

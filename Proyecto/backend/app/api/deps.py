@@ -1,41 +1,128 @@
 from typing import Generator
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from app.db.session import SessionLocal
+
 from app.core.config import settings
-from app.models.agricultor import Agricultor
+from app.db.session import SessionLocal
+from app.models.administrador import Administrador
+from app.models.usuario import Usuario
 from app.schemas.token import TokenPayload
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
 )
+optional_oauth2 = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/usuarios/login",
+    auto_error=False,
+)
+
 
 def get_db() -> Generator:
-    # Dependencia para inyectar la sesión de base de datos en las rutas
     try:
         db = SessionLocal()
         yield db
     finally:
         db.close()
 
-def get_current_user(
+
+def get_current_admin(
     db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
-) -> Agricultor:
-    # Función para obtener el agricultor actual (usuario) a partir del token JWT
+) -> Administrador:
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=["HS256"]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         token_data = TokenPayload(**payload)
     except (JWTError, ValidationError):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No se pudo validar las credenciales",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No se pudo validar el token",
         )
-    user = db.query(Agricultor).filter(Agricultor.id == token_data.sub).first()
-    if not user:
+
+    if token_data.sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token sin subject",
+        )
+
+    admin = None
+    if token_data.sub.isdigit():
+        admin = db.query(Administrador).filter(Administrador.id == int(token_data.sub)).first()
+    else:
+        admin = db.query(Administrador).filter(Administrador.email == token_data.sub).first()
+
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Administrador no encontrado",
+        )
+
+    if not admin.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Administrador inactivo",
+        )
+
+    return admin
+
+
+def _decode_token(token: str) -> TokenPayload:
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        return TokenPayload(**payload)
+    except (JWTError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No se pudo validar el token",
+        )
+
+
+def get_current_usuario(
+    db: Session = Depends(get_db), token: str = Depends(optional_oauth2)
+) -> Usuario:
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no autenticado",
+        )
+
+    token_data = _decode_token(token)
+    if token_data.role != "usuario" or token_data.sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de usuario invalido",
+        )
+
+    if not token_data.sub.isdigit():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de usuario invalido",
+        )
+
+    usuario = db.query(Usuario).filter(Usuario.id == int(token_data.sub)).first()
+    if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return user
+    if not usuario.is_active:
+        raise HTTPException(status_code=400, detail="Usuario inactivo")
+    return usuario
+
+
+def get_optional_usuario(
+    db: Session = Depends(get_db), token: str | None = Depends(optional_oauth2)
+) -> Usuario | None:
+    if not token:
+        return None
+
+    token_data = _decode_token(token)
+    if token_data.role != "usuario" or token_data.sub is None:
+        return None
+
+    if not token_data.sub.isdigit():
+        return None
+
+    usuario = db.query(Usuario).filter(Usuario.id == int(token_data.sub)).first()
+    if not usuario or not usuario.is_active:
+        return None
+    return usuario
