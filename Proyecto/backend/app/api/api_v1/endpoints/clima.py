@@ -30,9 +30,14 @@ async def read_clima_diario(
 
 @router.post("/diario/poligono", response_model=ClimaPoligonoResponse)
 async def read_clima_diario_poligono(payload: ClimaPoligonoRequest) -> dict:
-    centroide = calcular_centroide(payload.poligono_vertices)
+    centroide = calcular_centroide(payload.poligono or [])
     try:
         clima = await obtener_clima_diario(centroide["latitud"], centroide["longitud"])
     except ClimaServiceError as exc:
         raise _map_clima_error(exc)
     return {**clima, "centroide": centroide}
+
+
+@router.post("/poligono", response_model=ClimaPoligonoResponse)
+async def read_clima_poligono(payload: ClimaPoligonoRequest) -> dict:
+    return await read_clima_diario_poligono(payload)

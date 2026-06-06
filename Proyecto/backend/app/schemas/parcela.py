@@ -1,9 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 
-class Coordenada(BaseModel):
-    latitud: float = Field(..., ge=-90, le=90)
-    longitud: float = Field(..., ge=-180, le=180)
+from app.schemas.geometria import Coordenada
 
 class ParcelaBase(BaseModel):
     nombre: str

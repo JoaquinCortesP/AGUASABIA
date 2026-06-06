@@ -1,9 +1,9 @@
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from app.schemas.parcela import Coordenada
+from app.schemas.geometria import Coordenada
 
 
 class ClimaDiario(BaseModel):
@@ -16,7 +16,16 @@ class ClimaDiario(BaseModel):
 
 
 class ClimaPoligonoRequest(BaseModel):
-    poligono_vertices: list[Coordenada] = Field(..., min_length=3)
+    poligono: list[Coordenada] | None = Field(default=None, min_length=3)
+    poligono_vertices: list[Coordenada] | None = Field(default=None, min_length=3)
+
+    @model_validator(mode="after")
+    def normalizar_poligono(self) -> "ClimaPoligonoRequest":
+        if self.poligono is None and self.poligono_vertices is not None:
+            self.poligono = self.poligono_vertices
+        if not self.poligono or len(self.poligono) < 3:
+            raise ValueError("Debe enviar un poligono con al menos 3 vertices")
+        return self
 
 
 class ClimaPoligonoResponse(ClimaDiario):

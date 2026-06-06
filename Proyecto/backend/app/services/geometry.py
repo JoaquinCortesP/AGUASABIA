@@ -1,3 +1,4 @@
+from math import cos, pi
 from typing import Any, Iterable
 
 
@@ -37,3 +38,46 @@ def calcular_centroide(vertices: Iterable[Any]) -> dict[str, float]:
         "latitud": centroid_lat / (6 * signed_area),
         "longitud": centroid_lon / (6 * signed_area),
     }
+
+
+def normalizar_vertices(vertices: Iterable[Any]) -> list[dict[str, float]]:
+    points = [_as_point(vertex) for vertex in vertices]
+    if len(points) < 3:
+        raise ValueError("El poligono debe tener al menos 3 vertices")
+    return [{"latitud": latitud, "longitud": longitud} for latitud, longitud in points]
+
+
+def calcular_bbox(vertices: Iterable[Any]) -> dict[str, float]:
+    points = [_as_point(vertex) for vertex in vertices]
+    if len(points) < 3:
+        raise ValueError("El poligono debe tener al menos 3 vertices")
+    latitudes = [latitud for latitud, _ in points]
+    longitudes = [longitud for _, longitud in points]
+    return {
+        "min_latitud": min(latitudes),
+        "min_longitud": min(longitudes),
+        "max_latitud": max(latitudes),
+        "max_longitud": max(longitudes),
+    }
+
+
+def calcular_superficie_aprox_ha(vertices: Iterable[Any]) -> float:
+    points = [_as_point(vertex) for vertex in vertices]
+    if len(points) < 3:
+        raise ValueError("El poligono debe tener al menos 3 vertices")
+    if points[0] == points[-1]:
+        points = points[:-1]
+
+    lat_media_rad = (sum(latitud for latitud, _ in points) / len(points)) * pi / 180
+    metros_por_grado_lat = 111_320
+    metros_por_grado_lon = 111_320 * cos(lat_media_rad)
+
+    xy_points = [
+        (longitud * metros_por_grado_lon, latitud * metros_por_grado_lat)
+        for latitud, longitud in points
+    ]
+    area_m2 = 0.0
+    for index, (x_1, y_1) in enumerate(xy_points):
+        x_2, y_2 = xy_points[(index + 1) % len(xy_points)]
+        area_m2 += x_1 * y_2 - x_2 * y_1
+    return round(abs(area_m2) / 2 / 10_000, 4)
