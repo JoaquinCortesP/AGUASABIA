@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 76% 28%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 188 62% 94%;
+    --secondary-foreground: 217 76% 22%;
+    --muted: 214 32% 92%;
+    --muted-foreground: 215 16% 38%;
+    --accent: 174 54% 91%;
+    --accent-foreground: 173 82% 22%;
+    --destructive: 0 72% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 86%;
+    --input: 214 32% 86%;
+    --ring: 188 75% 38%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 42% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 42% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 196 80% 46%;
+    --primary-foreground: 222 47% 7%;
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 174 60% 18%;
+    --accent-foreground: 174 76% 82%;
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 188 85% 48%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .enterprise-panel {
+    @apply border border-border bg-card shadow-panel dark:shadow-panel-dark;
+  }
+
+  .leaflet-container {
+    @apply h-full w-full bg-muted font-sans;
+  }
+
+  .leaflet-control-layers,
+  .leaflet-bar a,
+  .leaflet-popup-content-wrapper,
+  .leaflet-popup-tip {
+    @apply border-border bg-card text-foreground shadow-panel;
+  }
+
+  .leaflet-popup-content {
+    @apply text-sm;
+  }
+}
