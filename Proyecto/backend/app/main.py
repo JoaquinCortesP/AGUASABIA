@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.api_v1.api import api_router
 from app.core.config import settings
 
 app = FastAPI(
     title="AguaSabia API",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
-# Configurar CORS (Cross-Origin Resource Sharing)
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
@@ -20,6 +20,11 @@ if settings.BACKEND_CORS_ORIGINS:
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+
 @app.get("/")
-def root():
-    return {"message": "Bienvenido a la API de AguaSabia. Ve a /docs para la documentación."}
+def root() -> dict[str, str]:
+    return {
+        "message": "Bienvenido a la API de AguaSabia.",
+        "vision": "Consulta territorial geoespacial para agua, clima, vegetacion, territorio y riesgos.",
+        "docs": "/docs",
+    }

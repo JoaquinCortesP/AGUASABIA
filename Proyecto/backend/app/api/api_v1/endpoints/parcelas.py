@@ -1,3 +1,5 @@
+"""LEGACY: parcelas y recomendacion de riego antigua, aisladas bajo /api/v1/legacy."""
+
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException

@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -18,11 +20,53 @@ from app.services.territorio_service import evaluar_modulo_territorio
 from app.services.vegetacion_service import evaluar_modulo_vegetacion
 
 
-PLANES_CON_MODO_AVANZADO = {"pago", "profesional", "institucional"}
+PLANES_CON_MODO_AVANZADO = {"pago", "premium", "profesional", "institucional", "avanzado"}
+VISITOR_DAILY_LIMIT = 3
+
+
+class VisitorDailyLimitExceeded(Exception):
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        super().__init__(f"Limite diario de {limit} consultas para visitantes alcanzado")
 
 
 def usuario_tiene_modo_avanzado(usuario: Usuario | None) -> bool:
     return bool(usuario and usuario.plan in PLANES_CON_MODO_AVANZADO)
+
+
+def _chile_day_bounds_utc() -> tuple[datetime, datetime]:
+    zona_chile = ZoneInfo("America/Santiago")
+    ahora_chile = datetime.now(zona_chile)
+    inicio_chile = ahora_chile.replace(hour=0, minute=0, second=0, microsecond=0)
+    fin_chile = inicio_chile + timedelta(days=1)
+    return inicio_chile.astimezone(timezone.utc), fin_chile.astimezone(timezone.utc)
+
+
+def contar_consultas_visitante_hoy(db: Session, visitor_key: str | None) -> int:
+    if not visitor_key:
+        return 0
+
+    inicio_utc, fin_utc = _chile_day_bounds_utc()
+    return (
+        db.query(ConsultaTerritorial)
+        .filter(
+            ConsultaTerritorial.usuario_id.is_(None),
+            ConsultaTerritorial.visitor_key == visitor_key,
+            ConsultaTerritorial.created_at >= inicio_utc,
+            ConsultaTerritorial.created_at < fin_utc,
+        )
+        .count()
+    )
+
+
+def validar_limite_visitante(db: Session, visitor_key: str | None) -> int | None:
+    if not visitor_key:
+        return None
+
+    consultas_hoy = contar_consultas_visitante_hoy(db, visitor_key)
+    if consultas_hoy >= VISITOR_DAILY_LIMIT:
+        raise VisitorDailyLimitExceeded(VISITOR_DAILY_LIMIT)
+    return VISITOR_DAILY_LIMIT - consultas_hoy - 1
 
 
 def construir_resumen_general(modulos: dict[str, dict[str, Any]]) -> str:
@@ -52,7 +96,12 @@ async def analizar_consulta_territorial(
     db: Session,
     payload: ConsultaTerritorialRequest,
     usuario: Usuario | None = None,
+    visitor_key: str | None = None,
 ) -> dict[str, Any]:
+    consultas_restantes_visitante = None
+    if usuario is None:
+        consultas_restantes_visitante = validar_limite_visitante(db, visitor_key)
+
     poligono = normalizar_vertices(payload.poligono or [])
     centroide = calcular_centroide(poligono)
     bbox = calcular_bbox(poligono)
@@ -115,48 +164,48 @@ async def analizar_consulta_territorial(
     }
     resumen_general = construir_resumen_general(modulos)
 
-    consulta_id = None
-    guardada = False
-    if payload.guardar:
-        consulta = ConsultaTerritorial(
-            usuario_id=usuario.id if usuario else None,
-            nombre=payload.nombre,
-            poligono=poligono,
-            centroide_latitud=centroide["latitud"],
-            centroide_longitud=centroide["longitud"],
-            bbox=bbox,
-            superficie_aprox_ha=superficie_aprox_ha,
-            modo=payload.modo,
-            guardada=True,
-            resumen_general=resumen_general,
-            resultado_json={
-                "area": {
-                    "centroide": centroide,
-                    "bbox": bbox,
-                    "superficie_aprox_ha": superficie_aprox_ha,
-                },
-                "modulos": modulos,
-            },
-        )
-        db.add(consulta)
-        db.flush()
-        for nombre, modulo in modulos.items():
-            db.add(
-                ResultadoConsultaModulo(
-                    consulta_id=consulta.id,
-                    tipo_modulo=nombre,
-                    estado=modulo["estado"],
-                    titulo=modulo["titulo"],
-                    explicacion=modulo["explicacion"],
-                    datos=modulo.get("datos"),
-                    fuentes=modulo.get("fuentes"),
-                    avanzado=modulo.get("avanzado"),
-                )
+    resultado_json = {
+        "area": {
+            "centroide": centroide,
+            "bbox": bbox,
+            "superficie_aprox_ha": superficie_aprox_ha,
+        },
+        "modulos": modulos,
+    }
+
+    guardada = bool(payload.guardar and usuario)
+    consulta = ConsultaTerritorial(
+        usuario_id=usuario.id if usuario else None,
+        visitor_key=visitor_key if usuario is None else None,
+        nombre=payload.nombre,
+        poligono=poligono,
+        centroide_latitud=centroide["latitud"],
+        centroide_longitud=centroide["longitud"],
+        bbox=bbox,
+        superficie_aprox_ha=superficie_aprox_ha,
+        modo=payload.modo,
+        guardada=guardada,
+        resumen_general=resumen_general,
+        resultado_json=resultado_json,
+    )
+    db.add(consulta)
+    db.flush()
+    for nombre, modulo in modulos.items():
+        db.add(
+            ResultadoConsultaModulo(
+                consulta_id=consulta.id,
+                tipo_modulo=nombre,
+                estado=modulo["estado"],
+                titulo=modulo["titulo"],
+                explicacion=modulo["explicacion"],
+                datos=modulo.get("datos"),
+                fuentes=modulo.get("fuentes"),
+                avanzado=modulo.get("avanzado"),
             )
-        db.commit()
-        db.refresh(consulta)
-        consulta_id = consulta.id
-        guardada = True
+        )
+    db.commit()
+    db.refresh(consulta)
+    consulta_id = consulta.id if guardada else None
 
     return {
         "consulta_id": consulta_id,
@@ -165,6 +214,8 @@ async def analizar_consulta_territorial(
         "modo_avanzado_disponible": True,
         "modo_avanzado_habilitado": avanzado_habilitado,
         "requiere_plan_pago": requiere_plan_pago,
+        "limite_diario_visitante": VISITOR_DAILY_LIMIT if usuario is None else None,
+        "consultas_restantes_visitante": consultas_restantes_visitante,
         "area": {
             "centroide": centroide,
             "bbox": bbox,

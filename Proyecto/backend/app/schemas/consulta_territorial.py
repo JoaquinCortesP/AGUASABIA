@@ -17,6 +17,7 @@ class ConsultaTerritorialRequest(BaseModel):
     modo: ModoConsulta = "resumen"
     guardar: bool = False
     nombre: str | None = None
+    cliente_anonimo_id: str | None = Field(default=None, max_length=128)
     modulos: list[ModuloSolicitado] = Field(
         default_factory=lambda: ["agua", "clima", "territorio", "vegetacion", "riesgos"]
     )
@@ -37,6 +38,8 @@ class ConsultaTerritorialResponse(BaseModel):
     modo_avanzado_disponible: bool = True
     modo_avanzado_habilitado: bool = False
     requiere_plan_pago: bool = False
+    limite_diario_visitante: int | None = None
+    consultas_restantes_visitante: int | None = None
     area: AreaAnalizada
     resumen_general: str
     modulos: dict[str, ModuloAnalisis]

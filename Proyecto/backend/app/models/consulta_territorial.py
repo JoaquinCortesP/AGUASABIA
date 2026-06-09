@@ -9,6 +9,7 @@ class ConsultaTerritorial(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+    visitor_key = Column(String, nullable=True, index=True)
     nombre = Column(String, nullable=True)
     poligono = Column(JSON, nullable=False)
     centroide_latitud = Column(Float, nullable=False)
@@ -22,7 +23,11 @@ class ConsultaTerritorial(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     usuario = relationship("Usuario", back_populates="consultas")
-    resultados_modulos = relationship("ResultadoConsultaModulo", back_populates="consulta")
+    resultados_modulos = relationship(
+        "ResultadoConsultaModulo",
+        back_populates="consulta",
+        cascade="all, delete-orphan",
+    )
 
 
 class ResultadoConsultaModulo(Base):

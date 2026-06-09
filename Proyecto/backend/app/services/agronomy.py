@@ -1,3 +1,5 @@
+"""LEGACY: motor de riego FAO-56 conservado solo para compatibilidad interna."""
+
 from typing import Any
 import unicodedata
 

@@ -1,3 +1,5 @@
+"""LEGACY: balances hidricos asociados a parcelas agricolas."""
+
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException
