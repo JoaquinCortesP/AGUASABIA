@@ -8,7 +8,7 @@ import {
   Tooltip,
   useMap,
 } from "react-leaflet";
-import { latLngBounds } from "leaflet";
+import { latLngBounds, type LatLngExpression } from "leaflet";
 import { PolygonDrawer } from "@/components/maps/PolygonDrawer";
 import { toLeafletLatLng } from "@/lib/leaflet/geo";
 import { cn } from "@/lib/utils/cn";
