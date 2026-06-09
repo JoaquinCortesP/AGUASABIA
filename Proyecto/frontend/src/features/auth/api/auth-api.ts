@@ -3,21 +3,15 @@ import type { LoginPayload, RegisterPayload, TokenResponse, UserProfile } from "
 
 export const authApi = {
   login: async (data: LoginPayload): Promise<TokenResponse> => {
-    const formData = new URLSearchParams();
-    formData.append("username", data.email);
-    formData.append("password", data.password);
-    
-    // FastAPI OAuth2PasswordRequestForm expects form data
-    const response = await api.post<TokenResponse>("/api/v1/usuarios/login/access-token", formData, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      }
+    const response = await api.post<TokenResponse>("/api/v1/usuarios/login", {
+      email: data.email,
+      password: data.password
     });
     return response.data;
   },
 
   register: async (data: RegisterPayload): Promise<UserProfile> => {
-    const response = await api.post<UserProfile>("/api/v1/usuarios/registro", {
+    const response = await api.post<UserProfile>("/api/v1/usuarios/register", {
       email: data.email,
       password: data.password,
       nombre: data.nombre,
