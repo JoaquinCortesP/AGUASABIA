@@ -18,3 +18,10 @@ class Administrador(AdministradorBase):
 
     class Config:
         from_attributes = True
+
+
+class AdminMetricas(BaseModel):
+    usuarios_registrados: int
+    consultas_realizadas: int
+    consultas_hoy: int
+    consultas_mes: int

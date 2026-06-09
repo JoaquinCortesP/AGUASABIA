@@ -7,4 +7,5 @@ class Token(BaseModel):
 class TokenPayload(BaseModel):
     sub: str | None = None
     role: str | None = None
+    plan: str | None = None
     municipio_id: int | None = None

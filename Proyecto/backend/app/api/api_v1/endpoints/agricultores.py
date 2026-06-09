@@ -1,3 +1,5 @@
+"""LEGACY: administracion agricola antigua, aislada bajo /api/v1/legacy."""
+
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException
