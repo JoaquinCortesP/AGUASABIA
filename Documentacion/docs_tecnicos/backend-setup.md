@@ -1,304 +1,150 @@
-# Guía de Configuración del Backend - AguaSabia
+# Guia de configuracion del backend - AguaSabia
 
-Esta guía explica detalladamente cómo instalar, configurar y ejecutar el backend del proyecto desde cero. Está estructurada paso a paso para que cualquier integrante del equipo pueda levantar el entorno de desarrollo de forma autónoma.
+## Proposito
 
----
+Esta guia indica como levantar el backend localmente para ejecutar pruebas de la API y obtener evidencias para el Estado de avance 3.
 
-## Requisitos Previos
+## Requisitos
 
-Antes de comenzar, asegúrate de tener instalado y en funcionamiento lo siguiente en tu sistema:
+- Python 3.10 o superior.
+- PostgreSQL.
+- Git.
+- Entorno virtual Python.
+- Conexion a internet para consumir Open-Meteo.
+- Postman para pruebas manuales.
 
-- **Python 3.10 o superior** (probado y compatible hasta Python 3.12).
-- **PostgreSQL 13 o superior** (ejecutándose como servicio local).
-- **Redis** (para la cola de mensajes y caché de Celery, puerto `6379`).
-- **Git** (para clonar y gestionar el código).
+Redis y Celery pueden mantenerse instalados como infraestructura futura, pero no son obligatorios para validar el flujo principal de consulta territorial de esta etapa.
 
-### Verificación de requisitos
-Ejecuta los siguientes comandos en tu terminal (PowerShell en Windows, o Bash en macOS/Linux) para comprobar que tienes las herramientas necesarias:
+## Preparacion
 
-```bash
-# Verificar Python
-python --version
+Entrar al backend:
 
-# Verificar pip
-pip --version
-
-# Verificar PostgreSQL
-psql --version
-
-# Verificar Redis
-redis-cli --version
-```
-
----
-
-## Guía de Configuración Paso a Paso
-
-### Paso 1 — Acceder a la carpeta del backend
-Abre la terminal en la raíz del proyecto y desplázate al directorio del backend:
-```bash
-cd Proyecto/backend
-```
-
-### Paso 2 — Crear y activar el entorno virtual
-El entorno virtual aísla las librerías del proyecto de tu sistema global.
-
-**En Windows (PowerShell):**
 ```powershell
-# Crear entorno virtual
-python -m venv venv
-
-# Activar entorno virtual (Windows)
-.venv\Scripts\Activate.ps1
+cd C:\Users\Joaqu\OneDrive\Escritorio\AguaSabia\AGUASABIA\Proyecto\backend
 ```
 
-**En macOS / Linux:**
-```bash
-# Crear el entorno virtual
-python3 -m venv .venv
+Crear entorno virtual si no existe:
 
-# Activar el entorno virtual
-source .venv/bin/activate
+```powershell
+python -m venv .venv
 ```
 
-> [!NOTE]
-> Sabrás que el entorno virtual está activado porque verás el prefijo `(.venv)` al principio de la línea en tu terminal.
+Activar entorno:
 
-### Paso 3 — Instalar las dependencias
-Con el entorno virtual activado, instala todas las librerías necesarias ejecutando:
-```bash
+```powershell
+.\.venv\Scripts\activate
+```
+
+Instalar dependencias:
+
+```powershell
 pip install -r requirements.txt
 ```
-Esto instalará FastAPI, SQLAlchemy, Alembic, Celery, Redis y los conectores de base de datos correspondientes.
 
-### Paso 4 — Configurar las variables de entorno
-Copia la plantilla de configuración `.env.example` y renómbrala a `.env`:
+## Variables de entorno
 
-**En Windows (PowerShell):**
+Crear `.env` desde `.env.example` si corresponde:
+
 ```powershell
 Copy-Item .env.example .env
 ```
 
-**En macOS / Linux / Git Bash:**
-```bash
-cp .env.example .env
-```
-
-Abre el archivo `.env` recién creado en tu editor de código preferido (como VS Code) y actualiza la variable `DATABASE_URL` con tu usuario y contraseña locales de PostgreSQL.
+Configurar base de datos de pruebas:
 
 ```env
-# Ejemplo de configuración local en .env
-DATABASE_URL=postgresql://postgres:tu_contraseña_aqui@localhost:5432/aguasabia
-```
-
-### Paso 5 — Crear la base de datos en PostgreSQL
-Antes de correr las migraciones, debes tener creada la base de datos vacía. Conéctate a tu consola de PostgreSQL:
-
-```bash
-psql -U postgres
-
-# O si PostgreSQL está en otra ubicación:
-C:\Program Files\PostgreSQL\15\bin\psql.exe -U postgres
-```
-
-### 3.2 Crear Base de Datos
-
-```sql
--- Dentro de psql:
-CREATE DATABASE aguasabia;
-\q
-```
-
-### Paso 6 — Generar y aplicar las migraciones (Base de Datos)
-Dado que el repositorio no incluye archivos de migración previos en el historial de Alembic (el directorio `alembic/versions` está inicialmente vacío), **es necesario generar la migración inicial antes de intentar actualizar la base de datos**.
-
-Sigue estos dos comandos en orden:
-
-1. **Generar la primera revisión**: Alembic comparará tus modelos de Python con tu base de datos vacía y creará los scripts de creación de tablas.
-   ```bash
-   python -m alembic revision --autogenerate -m "migracion inicial"
-   ```
-2. **Aplicar la migración a la base de datos**: Este comando ejecutará el script generado y creará las tablas físicamente.
-   ```bash
-   python -m alembic upgrade head
-   ```
-
-#### Verificación rápida de tablas:
-Para asegurar que todo se haya creado correctamente, ejecuta:
-```bash
-psql -U postgres -d aguasabia -c "\dt"
-```
-Deberías ver listadas las siguientes 5 tablas principales:
-- `regiones`
-- `comunas`
-- `agricultores`
-- `parcelas`
-- `balances_hidricos`
-
-### Paso 7 — Cargar los datos semilla (Seed)
-Ejecuta el script de poblamiento inicial para cargar en la base de datos las regiones y comunas de Chile que presentan decretos de escasez hídrica:
-```bash
-sudo apt-get install redis-server
-sudo service redis-server start
-```
-
-Notas sobre `seed.py`:
-
-- El script ahora crea también un `Municipio` de ejemplo (Municipio Copiapó) y un `Administrador` por defecto.
-- Credenciales del administrador generado:
-   - Email: `admin@aguasabia.cl`
-   - Contraseña inicial: `Admin1234!`
-
-Por seguridad, cambia la contraseña tras el primer login o ajusta el script si quieres otra contraseña.
-
-### 6.4 Verificar Conexión a Redis
-
-```powershell
-# Abrir otra terminal y ejecutar:
-redis-cli
-
-# Si aparece > entonces está conectado
-PING
-# Debe retornar: PONG
-
-# Salir:
-exit
-```
-
-## 7. Ejecutar el Backend
-
-### 7.1 Iniciar el Servidor de Desarrollo
-
-```powershell
-# Asegúrate de estar en el directorio backend con venv activado
-uvicorn app.main:app --reload
-```
-
-**Output esperado**:
-```
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started server process [1234]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-```
-
-### 7.2 Acceder a la Aplicación
-
-```
-URL Local:
-http://localhost:8000
-
-OpenAPI Documentation (Swagger UI):
-http://localhost:8000/docs
-
-Alternative API Documentation (ReDoc):
-http://localhost:8000/redoc
-
-Root endpoint:
-http://localhost:8000
-```
-
-### 7.3 Ejecutar Celery Worker (En otra terminal)
-
-```powershell
-# Activar venv en otra terminal
-
-# Windows
-celery -A app.workers.celery_app worker --loglevel=info
-
-# macOS/Linux
-celery -A app.workers.celery_app worker --loglevel=info
-```
-
-**Output esperado**:
-```
-[2024-05-13 10:30:00,000: INFO/MainProcess] Connected to redis://localhost:6379/0
-[2024-05-13 10:30:00,123: INFO/MainProcess] mingle: searching for executable celery script in /path...
-[2024-05-13 10:30:00,456: INFO/MainProcess] celery@HOSTNAME ready.
-```
-
-## 8. Puertos y URLs Utilizados
-
-### 8.1 Puertos por Defecto
-
-| Servicio | Puerto | URL |
-|----------|--------|-----|
-| FastAPI (Backend) | 8000 | http://localhost:8000 |
-| PostgreSQL | 5432 | localhost:5432 |
-| Redis | 6379 | redis://localhost:6379 |
-| Swagger UI | 8000 | http://localhost:8000/docs |
-
-### 8.2 Variables en .env
-
-```env
-# FastAPI
+DATABASE_URL=postgresql://postgres:password@localhost:5432/aguasabia_test
+SECRET_KEY=clave_de_pruebas
 API_V1_STR=/api/v1
-
-# Base URLs (localhost:8000 + prefijo)
-BASE_URL=http://localhost:8000
-API_BASE_URL=http://localhost:8000/api/v1
 ```
 
-## 9. Errores Comunes y Soluciones
+No incluir credenciales reales en screenshots.
 
-### 9.1 "ModuleNotFoundError: No module named 'app'"
+## Migraciones
 
-**Causa**: Estás en el directorio incorrecto o venv no está activado.
+Aplicar migraciones:
 
-**Solución**:
 ```powershell
-# Asegúrate de estar en /AguaSabia/Proyecto/backend
-cd AguaSabia/Proyecto/backend
+python -m alembic upgrade head
+```
 
-# Activa el venv
-venv\Scripts\Activate.ps1
+Verificar revision actual:
 
-# Intenta de nuevo
+```powershell
+python -m alembic current
+```
+
+## Datos semilla
+
+Ejecutar seed:
+
+```powershell
+python scripts\seed.py
+```
+
+El seed debe crear datos territoriales base y un administrador demo:
+
+```text
+admin@aguasabia.cl
+admin123
+```
+
+## Levantar backend
+
+```powershell
 uvicorn app.main:app --reload
 ```
 
-El backend estará disponible en:
-- **API Base**: `http://localhost:8000`
-- **Documentación Interactiva (Swagger UI)**: `http://localhost:8000/docs`
-- **Documentación Alternativa (Redoc)**: `http://localhost:8000/redoc`
+URLs:
 
-### Paso 9 — Iniciar Celery (Tareas en segundo plano)
-Celery se encarga de procesar tareas costosas o asíncronas (como la futura sincronización climática). Abre **una nueva ventana de terminal**, accede a `Proyecto/backend`, activa tu entorno virtual e inicia el worker:
-
-**Comando recomendado para Windows (modo mono-hilo para desarrollo local):**
-```bash
-celery -A app.worker.celery_app worker --loglevel=info --pool=solo
+```text
+API: http://127.0.0.1:8000
+Swagger: http://127.0.0.1:8000/docs
+OpenAPI: http://127.0.0.1:8000/api/v1/openapi.json
 ```
 
----
+## Flujo minimo para Postman
 
-## Tabla Resumen de Comandos
+1. Login admin:
 
-| Acción | Comando |
-| :--- | :--- |
-| **Activar entorno virtual** | `.venv\Scripts\Activate.ps1` (Win) o `source .venv/bin/activate` (Mac/Linux) |
-| **Instalar dependencias** | `pip install -r requirements.txt` |
-| **Generar primera migración** | `python -m alembic revision --autogenerate -m "descripcion"` |
-| **Aplicar cambios / migrar** | `python -m alembic upgrade head` |
-| **Cargar datos iniciales** | `python scripts/seed.py` |
-| **Iniciar servidor de API** | `uvicorn app.main:app --reload` |
-| **Iniciar Celery Workers** | `celery -A app.worker.celery_app worker --loglevel=info --pool=solo` |
+```text
+POST /api/v1/login/access-token
+```
 
----
+2. Registrar usuario:
 
-## Solución de Problemas Comunes
+```text
+POST /api/v1/usuarios/register
+```
 
-### 🔴 `ModuleNotFoundError: No module named 'app'`
-Este error ocurre cuando ejecutas `uvicorn` o `alembic` desde la carpeta incorrecta. Asegúrate de estar en `Proyecto/backend` antes de lanzar los comandos.
+3. Login usuario:
 
-### 🔴 `sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection refused`
-PostgreSQL no está corriendo en el puerto `5432` o tus credenciales en el archivo `.env` son incorrectas.
-- **En Windows**: Revisa que el servicio "postgresql-x64-XX" esté iniciado en el panel de Servicios de Windows.
+```text
+POST /api/v1/usuarios/login
+```
 
-### 🔴 `connection refused` al conectar con Redis
-Redis no está encendido o no está escuchando en `localhost:6379`.
-- Si usas Docker para Redis local, asegúrate de levantar el contenedor: `docker start redis` o `docker run -d -p 6379:6379 --name redis redis`.
-- Si usas WSL, inicia el servicio: `sudo service redis-server start`.
+4. Analizar poligono:
 
-### 🔴 `FAILED: Target database is not up to date`
-La base de datos tiene un historial de Alembic diferente al código. Ejecuta `python -m alembic upgrade head` para sincronizar las migraciones.
+```text
+POST /api/v1/territorio/consultas/analizar
+```
+
+5. Probar Open-Meteo:
+
+```text
+POST /api/v1/clima/poligono
+```
+
+6. Probar modulos:
+
+```text
+POST /api/v1/agua/poligono
+POST /api/v1/vegetacion/poligono
+POST /api/v1/riesgos/poligono
+```
+
+## Notas de alcance
+
+- El frontend no se valida en esta etapa.
+- Las APIs satelitales quedan planificadas para integracion posterior.
+- PostGIS queda planificado, no requerido para estas pruebas.
+- Agricultores, parcelas, balances y recomendacion de riego son elementos legacy y no forman parte del flujo principal actual.

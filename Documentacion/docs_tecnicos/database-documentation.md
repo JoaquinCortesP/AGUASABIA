@@ -1,123 +1,80 @@
-# Base de Datos - AguaSabia
+# Documentacion de base de datos - AguaSabia
 
-Esta documentación describe la estructura de la base de datos del proyecto.
-La base de datos es PostgreSQL y se gestiona con SQLAlchemy (Python) y Alembic (migraciones).
+## Proposito
 
----
+Este documento resume las tablas relevantes para pruebas y desarrollo actual. La persistencia se centra en usuarios y consultas territoriales, no en almacenar todos los terrenos de Chile.
 
-## Modelo de datos
+## Modelo actual recomendado
 
-El sistema tiene 5 tablas principales con las siguientes relaciones:
+| Tabla | Proposito |
+|---|---|
+| `usuarios` | Usuarios de plataforma, plan gratis/pago y autenticacion basica. |
+| `consultas_territoriales` | Consultas realizadas sobre un poligono enviado por el usuario. |
+| `resultados_consulta_modulos` | Resultado modular de agua, clima, territorio, vegetacion y riesgos. |
+| `administradores` | Usuarios internos del equipo. |
+| `municipios` | Soporte administrativo para admins internos. |
+| `regiones` | Catalogo territorial base. |
+| `comunas` | Catalogo territorial base. |
 
-```
-Región
- └── tiene muchas Comunas
-      └── cada Comuna tiene muchas Parcelas
-           └── cada Parcela pertenece a un Agricultor
-                └── cada Parcela tiene muchos Balances Hídricos
-```
+## Tablas preparadas para capas ambientales
 
----
+| Tabla | Uso futuro |
+|---|---|
+| `cuencas` | Cuencas hidrograficas y geometria asociada. |
+| `fuentes_hidricas` | Rios, embalses, humedales, pozos u otras fuentes. |
+| `indicadores_climaticos` | Datos climaticos historizados si se decide persistirlos. |
+| `indicadores_vegetacion` | NDVI, EVI y cobertura vegetal desde satelites. |
+| `eventos_incendio` | Eventos o zonas de incendio. |
+| `indices_sequia` | Indicadores de sequia por periodo o fuente. |
 
-## Tablas
+## Consulta territorial
 
-### `regiones`
+Una consulta territorial representa una pregunta del usuario sobre un area seleccionada.
 
-Almacena las regiones de Chile.
+Campos esperados:
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | INT | Clave primaria, generada automáticamente |
-| `nombre` | VARCHAR | Nombre de la región (ej: Atacama, Coquimbo) |
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `id` | INT | Identificador. |
+| `usuario_id` | INT nullable | Usuario que guardo la consulta. |
+| `nombre` | VARCHAR nullable | Nombre opcional. |
+| `poligono` | JSON | Vertices enviados por el frontend. |
+| `centroide_latitud` | FLOAT | Centroide calculado. |
+| `centroide_longitud` | FLOAT | Centroide calculado. |
+| `bbox` | JSON | Caja envolvente. |
+| `superficie_aprox_ha` | FLOAT | Superficie aproximada en hectareas. |
+| `modo` | VARCHAR | `resumen` o `avanzado`. |
+| `guardada` | BOOLEAN | Indica si se persistio. |
+| `resumen_general` | TEXT | Lectura simple para usuario. |
+| `resultado_json` | JSON | Resultado consolidado. |
 
-### `comunas`
+## Legacy
 
-Almacena las comunas dentro de cada región, junto con su situación hídrica.
+| Tabla | Estado | Motivo |
+|---|---|---|
+| `agricultores` | Legacy | El producto ya no centra su flujo en agricultores. |
+| `parcelas` | Legacy | El concepto operativo se reemplaza por consulta territorial por poligono. |
+| `balances_hidricos` | Legacy parcial | Datos hidricos reutilizables, pero ya no como recomendacion de riego. |
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | INT | Clave primaria |
-| `nombre` | VARCHAR | Nombre de la comuna (ej: Copiapó) |
-| `region_id` | INT | FK → `regiones.id` |
-| `situacion` | VARCHAR | Situación hídrica (ej: Escasez hídrica, Estrés hídrico urbano) |
+No se deben eliminar estas tablas sin migracion formal.
 
-### `agricultores`
+## PostGIS
 
-Usuarios del sistema. Se autentican con email y contraseña.
+PostGIS queda planificado para una etapa posterior.
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | INT | Clave primaria |
-| `nombre` | VARCHAR | Nombre completo |
-| `email` | VARCHAR | Email único, se usa para iniciar sesión |
-| `hashed_password` | VARCHAR | Contraseña cifrada con bcrypt (nunca en texto plano) |
-| `is_active` | BOOL | Si el usuario está habilitado o no |
+Objetivos:
 
-### `parcelas`
+- almacenar poligonos como geometria;
+- calcular areas con mayor precision;
+- intersectar con cuencas, rios, humedales y limites administrativos;
+- medir distancias a fuentes hidricas;
+- cruzar capas de incendios y sequia.
 
-Parcelas de tierra registradas por cada agricultor.
+Plan recomendado:
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | INT | Clave primaria |
-| `nombre` | VARCHAR | Nombre descriptivo de la parcela |
-| `agricultor_id` | INT | FK → `agricultores.id` |
-| `comuna_id` | INT | FK → `comunas.id` |
-| `latitud` | FLOAT | Coordenada geográfica (se usará para APIs de clima) |
-| `longitud` | FLOAT | Coordenada geográfica |
-| `superficie` | FLOAT | Tamaño en hectáreas |
-| `tipo_cultivo` | VARCHAR | Tipo de cultivo (ej: Maíz, Vid, Palto) |
-
-### `balances_hidricos`
-
-Registros de balance hídrico calculados por parcela y fecha.
-Inicialmente se llenan manualmente. En el futuro se calcularán con Open-Meteo y SoilGrids.
-
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | INT | Clave primaria |
-| `parcela_id` | INT | FK → `parcelas.id` |
-| `fecha` | DATE | Fecha del balance |
-| `evapotranspiracion` | FLOAT | Agua perdida por evapotranspiración (mm/día) |
-| `precipitacion` | FLOAT | Lluvia registrada (mm) |
-| `riego_sugerido` | FLOAT | Riego recomendado (mm) |
-| `humedad_suelo` | FLOAT | Humedad del suelo (%) |
-
----
-
-## Migraciones
-
-Las migraciones permiten crear o modificar tablas sin borrar datos.
-Se gestionan con Alembic desde la carpeta `backend/`.
-
-```powershell
-# Crear tablas por primera vez (o aplicar cambios nuevos)
-python -m alembic upgrade head
-
-# Generar una nueva migración después de cambiar un modelo
-python -m alembic revision --autogenerate -m "descripcion del cambio"
-
-# Ver el estado actual de la base de datos
-python -m alembic current
-```
-
----
-
-## Datos iniciales
-
-El script `scripts/seed.py` carga automáticamente las regiones y comunas de Chile
-que presentan situaciones de escasez hídrica. Solo debe ejecutarse una vez:
-
-```powershell
-python scripts/seed.py
-```
-
-Cubre comunas de: Atacama, Coquimbo, Valparaíso, Metropolitana, O'Higgins, Maule y Los Lagos.
-
----
-
-## Notas de diseño
-
-- Las contraseñas nunca se guardan en texto plano. Se cifran con bcrypt antes de almacenarse.
-- Las coordenadas de cada parcela son el punto de entrada para las futuras integraciones con APIs de clima y suelo.
-- La tabla `balances_hidricos` es el núcleo del sistema. Actualmente se puede llenar vía API. En el futuro, Celery lo hará automáticamente cada día.
+1. Mantener JSON temporal para compatibilidad.
+2. Definir SRID `4326`.
+3. Agregar columnas `geometry` en migracion no destructiva.
+4. Poblar geometria a partir de JSON existente.
+5. Validar consultas espaciales.
+6. Reemplazar calculos aproximados por funciones PostGIS.

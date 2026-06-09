@@ -1,298 +1,187 @@
-# Documentación de API REST - AguaSabia
+# Documentacion de API REST - AguaSabia
 
-Esta documentación describe detalladamente los endpoints HTTP disponibles en el backend de AguaSabia, incluyendo los parámetros requeridos, esquemas de entrada y salida, autenticación y códigos de respuesta.
+## Informacion general
 
----
+| Campo | Valor |
+|---|---|
+| URL local | `http://127.0.0.1:8000` |
+| Prefijo API | `/api/v1` |
+| Swagger | `http://127.0.0.1:8000/docs` |
+| ReDoc | `http://127.0.0.1:8000/redoc` |
+| Formato principal | JSON |
 
-## 1. Información General
+## Autenticacion
 
-- **URL Base**: `http://localhost:8000`
-- **Prefijo de API**: `/api/v1`
-- **Autenticación**: OAuth2 con JWT (JSON Web Tokens)
-- **Documentación Interactiva (Swagger)**: `http://localhost:8000/docs`
-- **Documentación Alternativa (ReDoc)**: `http://localhost:8000/redoc`
-
----
-
-## 2. Autenticación y Seguridad
-
-Todos los endpoints protegidos requieren que se envíe el token JWT en las cabeceras de la petición en el siguiente formato:
+Los endpoints protegidos usan bearer token:
 
 ```http
-Authorization: Bearer <token_jwt>
+Authorization: Bearer <token>
 ```
 
----
+Existen dos tipos de autenticacion:
 
-## 3. Endpoints Disponibles
+- Administrador interno: `POST /api/v1/login/access-token`
+- Usuario de plataforma: `POST /api/v1/usuarios/login`
 
-### 3.1 Obtención de Token de Acceso (Login)
+## Endpoints principales
 
-Autentica a un agricultor mediante su email y contraseña, retornando un token JWT.
+### Administracion interna
 
-- **Método**: `POST`
-- **Ruta**: `/api/v1/login/access-token`
-- **Cabeceras**: `Content-Type: application/x-www-form-urlencoded`
-- **Request Body (Form Data)**:
-  - `username` (string, obligatorio): Email del agricultor (ej: `juan@example.com`).
-  - `password` (string, obligatorio): Contraseña en texto plano.
+| Metodo | Ruta | Uso |
+|---|---|---|
+| `POST` | `/api/v1/login/access-token` | Login de administrador interno. |
+| `POST` | `/api/v1/admin/register` | Registro de administrador interno. |
+| `GET` | `/api/v1/admin/me` | Ver administrador autenticado. |
 
-#### Respuestas:
+### Usuarios
 
-##### 🟢 200 OK (Inicio de sesión exitoso)
+| Metodo | Ruta | Uso |
+|---|---|---|
+| `POST` | `/api/v1/usuarios/register` | Registrar usuario basico. |
+| `POST` | `/api/v1/usuarios/login` | Login de usuario. |
+| `GET` | `/api/v1/usuarios/me` | Ver usuario autenticado. |
+
+Ejemplo registro:
+
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
+  "nombre": "Usuario Prueba",
+  "email": "usuario.prueba@aguasabia.cl",
+  "password": "usuario123"
 }
 ```
 
-##### 🔴 400 Bad Request (Credenciales incorrectas)
+Ejemplo login:
+
 ```json
 {
-  "detail": "Email o contraseña incorrectos"
+  "email": "usuario.prueba@aguasabia.cl",
+  "password": "usuario123"
 }
 ```
 
-##### 🔴 422 Unprocessable Entity (Datos faltantes o inválidos)
+### Territorio
+
+| Metodo | Ruta | Uso |
+|---|---|---|
+| `GET` | `/api/v1/territorio/regiones` | Listar regiones. |
+| `GET` | `/api/v1/territorio/comunas?region_id=1` | Listar comunas. |
+| `POST` | `/api/v1/territorio/consultas/analizar` | Analizar un poligono. |
+| `GET` | `/api/v1/territorio/consultas` | Listar consultas guardadas del usuario. |
+| `GET` | `/api/v1/territorio/consultas/{id}` | Ver consulta guardada. |
+
+Request principal:
+
 ```json
 {
-  "detail": [
-    {
-      "loc": ["body", "username"],
-      "msg": "field required",
-      "type": "value_error.missing"
+  "poligono": [
+    { "latitud": -33.4480, "longitud": -70.6700 },
+    { "latitud": -33.4480, "longitud": -70.6680 },
+    { "latitud": -33.4500, "longitud": -70.6680 },
+    { "latitud": -33.4500, "longitud": -70.6700 }
+  ],
+  "modo": "resumen",
+  "guardar": false,
+  "modulos": ["agua", "clima", "territorio", "vegetacion", "riesgos"]
+}
+```
+
+Respuesta esperada:
+
+```json
+{
+  "consulta_id": null,
+  "guardada": false,
+  "modo": "resumen",
+  "modo_avanzado_disponible": true,
+  "modo_avanzado_habilitado": false,
+  "requiere_plan_pago": false,
+  "area": {
+    "centroide": {
+      "latitud": -33.449,
+      "longitud": -70.669
+    },
+    "bbox": {
+      "min_latitud": -33.45,
+      "min_longitud": -70.67,
+      "max_latitud": -33.448,
+      "max_longitud": -70.668
+    },
+    "superficie_aprox_ha": 4.0
+  },
+  "resumen_general": "Texto explicativo de la zona seleccionada.",
+  "modulos": {
+    "agua": {
+      "estado": "informativo",
+      "titulo": "Lectura hidrica inicial",
+      "explicacion": "Texto simple para el usuario.",
+      "datos": {},
+      "fuentes": [],
+      "avanzado": {},
+      "avanzado_restringido": true
     }
-  ]
-}
-```
-
-#### Ejemplo cURL:
-```bash
-curl -X POST "http://localhost:8000/api/v1/login/access-token" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=juan@example.com&password=mi_contraseña_secreta"
-```
-
----
-
-### 3.2 Gestión de Parcelas
-
-#### 3.2.1 Listar Parcelas
-Obtiene las parcelas asociadas exclusivamente al agricultor autenticado.
-
-- **Método**: `GET`
-- **Ruta**: `/api/v1/parcelas/`
-- **Autenticación**: Requerida (Bearer Token).
-- **Parámetros de Consulta (Query Params)**:
-  - `skip` (integer, opcional, por defecto `0`): Número de registros a saltar.
-  - `limit` (integer, opcional, por defecto `100`): Límite de registros a retornar.
-
-##### Respuestas:
-
-##### 🟢 200 OK (Listado de parcelas obtenido)
-```json
-[
-  {
-    "id": 1,
-    "nombre": "Huerto Norte",
-    "agricultor_id": 2,
-    "comuna_id": 15,
-    "latitud": -33.456,
-    "longitud": -70.648,
-    "superficie": 4.5,
-    "tipo_cultivo": "Paltos"
   }
-]
-```
-
-##### 🔴 401 Unauthorized (Token ausente o inválido)
-```json
-{
-  "detail": "Not authenticated"
 }
 ```
 
-##### 🔴 403 Forbidden (Token no válido para el usuario)
+### Clima
+
+| Metodo | Ruta | Uso |
+|---|---|---|
+| `GET` | `/api/v1/clima/diario?latitud=-33.4489&longitud=-70.6693` | Clima diario por punto. |
+| `POST` | `/api/v1/clima/poligono` | Clima diario por centroide de poligono. |
+
+Respuesta:
+
 ```json
 {
-  "detail": "No se pudo validar las credenciales"
+  "fecha": "2026-06-08",
+  "latitud": -33.4489,
+  "longitud": -70.6693,
+  "et0_mm": 1.5,
+  "precipitacion_mm": 0.0,
+  "fuente": "Open-Meteo"
 }
 ```
 
----
+### Agua
 
-#### 3.2.2 Crear Parcela
-Registra una nueva parcela para el agricultor conectado.
+| Metodo | Ruta | Uso |
+|---|---|---|
+| `POST` | `/api/v1/agua/poligono` | Lectura hidrica explicativa por poligono. |
 
-- **Método**: `POST`
-- **Ruta**: `/api/v1/parcelas/`
-- **Autenticación**: Requerida (Bearer Token).
-- **Cabeceras**: `Content-Type: application/json`
-- **Request Body (JSON)**:
-  - `nombre` (string, obligatorio): Nombre identificativo de la parcela.
-  - `comuna_id` (integer, obligatorio): ID de la comuna (debe existir en la base de datos).
-  - `agricultor_id` (integer, obligatorio): ID del agricultor dueño de la parcela (debe coincidir con el usuario actual o estar autorizado).
-  - `latitud` (float, opcional): Coordenada latitud.
-  - `longitud` (float, opcional): Coordenada longitud.
-  - `superficie` (float, opcional): Superficie de la parcela en hectáreas.
-  - `tipo_cultivo` (string, opcional): Tipo de cultivo plantado (ej: `Duraznos`, `Uva de mesa`).
+El modulo usa datos climaticos disponibles y entrega explicacion, estado y datos basicos. No entrega recomendaciones automaticas de riego.
 
-##### Ejemplo de Body:
-```json
-{
-  "nombre": "Parcela El Molino",
-  "comuna_id": 5,
-  "agricultor_id": 1,
-  "latitud": -30.032,
-  "longitud": -70.701,
-  "superficie": 2.8,
-  "tipo_cultivo": "Limones"
-}
-```
+### Vegetacion
 
-##### Respuestas:
+| Metodo | Ruta | Uso |
+|---|---|---|
+| `POST` | `/api/v1/vegetacion/poligono` | Contrato preparado para NDVI/cobertura vegetal. |
 
-##### 🟢 201 Created (Parcela creada exitosamente)
-```json
-{
-  "id": 5,
-  "nombre": "Parcela El Molino",
-  "comuna_id": 5,
-  "agricultor_id": 1,
-  "latitud": -30.032,
-  "longitud": -70.701,
-  "superficie": 2.8,
-  "tipo_cultivo": "Limones"
-}
-```
+Mientras no exista integracion satelital real, el modulo debe responder como `pendiente` y no inventar datos.
 
-##### 🔴 401 Unauthorized (Token no provisto)
-```json
-{
-  "detail": "Not authenticated"
-}
-```
+### Riesgos
 
-##### 🔴 422 Unprocessable Entity (Validación fallida en campos de entrada)
-```json
-{
-  "detail": [
-    {
-      "loc": ["body", "nombre"],
-      "msg": "field required",
-      "type": "value_error.missing"
-    }
-  ]
-}
-```
+| Metodo | Ruta | Uso |
+|---|---|---|
+| `POST` | `/api/v1/riesgos/poligono` | Contrato preparado para incendios, sequia y deficit hidrico. |
 
----
+Mientras no existan capas externas conectadas, el modulo debe indicar estado pendiente o informativo.
 
-### 3.3 Gestión de Balances Hídricos
+## Codigos HTTP esperados
 
-#### 3.3.1 Consultar Balances Hídricos de una Parcela
-Obtiene los registros históricos de balance hídrico calculados para una parcela en particular.
+| Codigo | Uso |
+|---|---|
+| `200` | Consulta exitosa. |
+| `201` | Recurso creado. |
+| `400` | Credenciales invalidas o entidad inactiva. |
+| `401` | Falta autenticacion. |
+| `403` | Usuario sin permiso. |
+| `404` | Recurso no encontrado. |
+| `422` | Entrada invalida, coordenadas fuera de rango o poligono insuficiente. |
+| `502` | Respuesta externa incompleta o rechazada. |
+| `503` | API externa no disponible. |
 
-- **Método**: `GET`
-- **Ruta**: `/api/v1/balances/`
-- **Autenticación**: Requerida (Bearer Token).
-- **Parámetros de Consulta (Query Params)**:
-  - `parcela_id` (integer, **obligatorio**): ID de la parcela a consultar.
-  - `skip` (integer, opcional, por defecto `0`): Paginación de registros.
-  - `limit` (integer, opcional, por defecto `100`): Límite de registros a retornar.
+## Endpoints legacy
 
-##### Respuestas:
-
-##### 🟢 200 OK (Listado de balances obtenido)
-```json
-[
-  {
-    "id": 12,
-    "parcela_id": 5,
-    "fecha": "2026-05-25",
-    "evapotranspiracion": 4.8,
-    "precipitacion": 0.0,
-    "riego_sugerido": 3.2,
-    "humedad_suelo": 24.5
-  }
-]
-```
-
-##### 🔴 400 Bad Request (Falta el parámetro parcela_id)
-FastAPI lanzará un error de validación de tipo 422 en su lugar por parámetro ausente.
-
-##### 🔴 401 Unauthorized
-```json
-{
-  "detail": "Not authenticated"
-}
-```
-
----
-
-#### 3.3.2 Registrar Nuevo Balance Hídrico
-Crea un registro de balance hídrico diario (generalmente ejecutado por la tarea programada en segundo plano o el motor de procesamiento).
-
-- **Método**: `POST`
-- **Ruta**: `/api/v1/balances/`
-- **Autenticación**: Requerida (Bearer Token).
-- **Cabeceras**: `Content-Type: application/json`
-- **Request Body (JSON)**:
-  - `parcela_id` (integer, obligatorio): ID de la parcela.
-  - `fecha` (string en formato `YYYY-MM-DD`, obligatorio): Fecha del balance.
-  - `evapotranspiracion` (float, opcional): Pérdida de agua estimada en milímetros (mm).
-  - `precipitacion` (float, opcional): Lluvia caída en milímetros (mm).
-  - `riego_sugerido` (float, opcional): Cantidad recomendada a regar en milímetros (mm).
-  - `humedad_suelo` (float, opcional): Porcentaje de humedad en el suelo estimado.
-
-##### Ejemplo de Body:
-```json
-{
-  "parcela_id": 5,
-  "fecha": "2026-05-26",
-  "evapotranspiracion": 5.2,
-  "precipitacion": 1.2,
-  "riego_sugerido": 2.4,
-  "humedad_suelo": 23.1
-}
-```
-
-##### Respuestas:
-
-##### 🟢 201 Created (Balance hídrico registrado)
-```json
-{
-  "id": 13,
-  "parcela_id": 5,
-  "fecha": "2026-05-26",
-  "evapotranspiracion": 5.2,
-  "precipitacion": 1.2,
-  "riego_sugerido": 2.4,
-  "humedad_suelo": 23.1
-}
-```
-
-##### 🔴 401 Unauthorized
-```json
-{
-  "detail": "Not authenticated"
-}
-```
-
----
-
-## 4. Códigos de Respuesta HTTP Comunes
-
-El backend responde con códigos de estado estándar de la industria:
-
-| Código | Estado | Significado |
-| :--- | :--- | :--- |
-| `200` | OK | La petición fue exitosa y retorna la información solicitada. |
-| `201` | Created | Se ha creado exitosamente el recurso (ej: parcela, balance). |
-| `400` | Bad Request | Parámetros inválidos o error en credenciales. |
-| `401` | Unauthorized | Falta token de autenticación o ha caducado. |
-| `403` | Forbidden | El token es válido pero no pertenece a un usuario con acceso al recurso. |
-| `404` | Not Found | El recurso (por ejemplo, el agricultor o la parcela) no existe. |
-| `422` | Unprocessable Entity | Pydantic rechazó la entrada por no coincidir con el tipo de datos (ej: enviar texto en un ID entero). |
-| `500` | Internal Server Error | Ocurrió un error inesperado en el código del servidor o base de datos. |
+Los endpoints de agricultores, parcelas, balances y recomendacion de riego quedan como legado tecnico de etapas anteriores. No deben presentarse como flujo principal de AguaSabia en el Estado de avance 3.
