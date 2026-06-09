@@ -96,17 +96,15 @@ function FitToGeometry({
   const map = useMap();
 
   useEffect(() => {
-    const points = polygon.length ? toLeafletLatLng(polygon) : [];
-
-    if (!points.length && area) {
-      points.push([area.bbox.min_latitud, area.bbox.min_longitud]);
-      points.push([area.bbox.max_latitud, area.bbox.max_longitud]);
-    }
-
-    if (points.length > 1) {
+    // Only fit to area when it's provided by the backend analysis
+    if (area) {
+      const points: LatLngExpression[] = [
+        [area.bbox.min_latitud, area.bbox.min_longitud],
+        [area.bbox.max_latitud, area.bbox.max_longitud]
+      ];
       map.fitBounds(latLngBounds(points), { padding: [28, 28], maxZoom: 13 });
     }
-  }, [area, map, polygon]);
+  }, [area, map]);
 
   return null;
 }

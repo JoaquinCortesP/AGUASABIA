@@ -9,6 +9,7 @@ import { ProfilePage } from "@/pages/profile-page";
 import { AdminPage } from "@/pages/admin-page";
 import { LoginPage } from "@/pages/login-page";
 import { RegisterPage } from "@/pages/register-page";
+import { HistorialPage } from "@/pages/historial-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 
 const router = createBrowserRouter([
@@ -26,7 +27,7 @@ const router = createBrowserRouter([
       { path: "/mapa", element: <MapPage /> },
       { path: "/aprender", element: <LearnPage /> },
       { path: "/perfil", element: <ProfilePage /> },
-      // TODO: Add historial page
+      { path: "/historial", element: <HistorialPage /> },
     ]
   },
   {
