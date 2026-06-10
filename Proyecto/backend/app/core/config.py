@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: Optional[str] = None
 
     OPEN_METEO_API_KEY: Optional[str] = None
+    
+    # Earth Engine Auth (Fase 3)
+    EE_PROJECT_ID: Optional[str] = None
+    EE_SERVICE_ACCOUNT_JSON: Optional[str] = None
 
 
 settings = Settings()

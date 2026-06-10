@@ -17,6 +17,9 @@
 | RF-011 | Preparar modulo vegetacion | `POST /api/v1/vegetacion/poligono` | `app/services/vegetacion_service.py` | CP-016 | Planificado |
 | RF-012 | Preparar modulo riesgos | `POST /api/v1/riesgos/poligono` | `app/services/riesgos_service.py` | CP-017 | Planificado |
 | RF-013 | Restringir modo avanzado | `modo=avanzado` | `app/services/consulta_territorial_service.py` | CP-018, CP-019 | Planificado |
+| RF-014 | Generar interpretación ambiental | `POST /api/v1/territorio/consultas/analizar` | `app/services/agua_service.py` | N/A | Planificado |
+| RF-015 | Visualizar métricas de uso | N/A | UI Admin Dashboard | N/A | Planificado |
+| RF-016 | Cambiar capas cartográficas | N/A | `frontend/src/components/maps/LayerSelector.tsx` | N/A | Planificado |
 
 ## Requerimientos no funcionales
 

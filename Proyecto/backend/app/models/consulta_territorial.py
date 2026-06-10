@@ -1,5 +1,6 @@
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text, func
 from sqlalchemy.orm import relationship
+from geoalchemy2 import Geometry
 
 from app.db.base import Base
 
@@ -11,7 +12,7 @@ class ConsultaTerritorial(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
     visitor_key = Column(String, nullable=True, index=True)
     nombre = Column(String, nullable=True)
-    poligono = Column(JSON, nullable=False)
+    poligono = Column(Geometry("POLYGON", srid=4326), nullable=False)
     centroide_latitud = Column(Float, nullable=False)
     centroide_longitud = Column(Float, nullable=False)
     bbox = Column(JSON, nullable=False)

@@ -14,7 +14,9 @@ from app.services.geometry import (
     calcular_centroide,
     calcular_superficie_aprox_ha,
     normalizar_vertices,
+    convertir_vertices_a_wkt,
 )
+from geoalchemy2.elements import WKTElement
 from app.services.riesgos_service import evaluar_modulo_riesgos
 from app.services.territorio_service import evaluar_modulo_territorio
 from app.services.vegetacion_service import evaluar_modulo_vegetacion
@@ -105,10 +107,15 @@ async def analizar_consulta_territorial(
     poligono = normalizar_vertices(payload.poligono or [])
     centroide = calcular_centroide(poligono)
     bbox = calcular_bbox(poligono)
-    superficie_aprox_ha = calcular_superficie_aprox_ha(poligono)
-
     avanzado_habilitado = payload.modo == "avanzado" and usuario_tiene_modo_avanzado(usuario)
     requiere_plan_pago = payload.modo == "avanzado" and not avanzado_habilitado
+
+    wkt_polygon = convertir_vertices_a_wkt(poligono)
+    
+    # Calcular superficie real usando PostGIS ST_Area(geography)
+    from sqlalchemy import func
+    superficie_m2 = db.scalar(func.ST_Area(func.ST_GeographyFromText(f"SRID=4326;{wkt_polygon}")))
+    superficie_aprox_ha = round(float(superficie_m2) / 10000, 4) if superficie_m2 else calcular_superficie_aprox_ha(poligono)
 
     clima = await obtener_clima_diario(centroide["latitud"], centroide["longitud"])
 
@@ -145,7 +152,7 @@ async def analizar_consulta_territorial(
             "avanzado_restringido": not avanzado_habilitado,
         }
     if "agua" in payload.modulos:
-        modulos["agua"] = evaluar_modulo_agua(clima, avanzado_habilitado)
+        modulos["agua"] = evaluar_modulo_agua(clima, db, wkt_polygon, avanzado_habilitado)
     if "territorio" in payload.modulos:
         modulos["territorio"] = evaluar_modulo_territorio(
             centroide=centroide,
@@ -153,10 +160,14 @@ async def analizar_consulta_territorial(
             superficie_aprox_ha=superficie_aprox_ha,
             avanzado_habilitado=avanzado_habilitado,
         )
+    ndvi_promedio = None
     if "vegetacion" in payload.modulos:
-        modulos["vegetacion"] = evaluar_modulo_vegetacion(avanzado_habilitado)
+        modulos["vegetacion"] = evaluar_modulo_vegetacion(wkt_polygon, avanzado_habilitado)
+        if modulos["vegetacion"].get("datos"):
+            ndvi_promedio = modulos["vegetacion"]["datos"].get("ndvi_promedio")
+            
     if "riesgos" in payload.modulos:
-        modulos["riesgos"] = evaluar_modulo_riesgos(clima, avanzado_habilitado)
+        modulos["riesgos"] = evaluar_modulo_riesgos(clima, ndvi_promedio, avanzado_habilitado)
 
     modulos = {
         nombre: _serializar_modulo(modulo, avanzado_habilitado)
@@ -172,13 +183,12 @@ async def analizar_consulta_territorial(
         },
         "modulos": modulos,
     }
-
     guardada = bool(payload.guardar and usuario)
     consulta = ConsultaTerritorial(
         usuario_id=usuario.id if usuario else None,
         visitor_key=visitor_key if usuario is None else None,
         nombre=payload.nombre,
-        poligono=poligono,
+        poligono=WKTElement(wkt_polygon, srid=4326),
         centroide_latitud=centroide["latitud"],
         centroide_longitud=centroide["longitud"],
         bbox=bbox,

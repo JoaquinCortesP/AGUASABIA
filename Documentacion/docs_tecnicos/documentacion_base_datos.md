@@ -38,11 +38,11 @@ Campos esperados:
 | `id` | INT | Identificador. |
 | `usuario_id` | INT nullable | Usuario que guardo la consulta. |
 | `nombre` | VARCHAR nullable | Nombre opcional. |
-| `poligono` | JSON | Vertices enviados por el frontend. |
-| `centroide_latitud` | FLOAT | Centroide calculado. |
-| `centroide_longitud` | FLOAT | Centroide calculado. |
+| `poligono` | GEOMETRY(POLYGON, 4326) | Vertices convertidos a geometría espacial PostGIS. |
+| `centroide_latitud` | FLOAT | Centroide. |
+| `centroide_longitud` | FLOAT | Centroide. |
 | `bbox` | JSON | Caja envolvente. |
-| `superficie_aprox_ha` | FLOAT | Superficie aproximada en hectareas. |
+| `superficie_aprox_ha` | FLOAT | Superficie real calculada usando ST_Area de PostGIS. |
 | `modo` | VARCHAR | `resumen` o `avanzado`. |
 | `guardada` | BOOLEAN | Indica si se persistio. |
 | `resumen_general` | TEXT | Lectura simple para usuario. |
@@ -60,21 +60,16 @@ No se deben eliminar estas tablas sin migracion formal.
 
 ## PostGIS
 
-PostGIS queda planificado para una etapa posterior.
+PostGIS **está implementado activamente** en el núcleo de las consultas territoriales.
 
-Objetivos:
+Objetivos cumplidos y en curso:
 
-- almacenar poligonos como geometria;
-- calcular areas con mayor precision;
-- intersectar con cuencas, rios, humedales y limites administrativos;
-- medir distancias a fuentes hidricas;
-- cruzar capas de incendios y sequia.
+- almacenar poligonos como geometria nativa (`GEOMETRY(POLYGON, 4326)`);
+- calcular areas reales y precisas usando `ST_Area` y cast a geography;
+- (Próximamente) intersectar con cuencas, rios, humedales y limites administrativos;
+- (Próximamente) cruzar capas de la DGA para decretos de escasez.
 
-Plan recomendado:
-
-1. Mantener JSON temporal para compatibilidad.
-2. Definir SRID `4326`.
-3. Agregar columnas `geometry` en migracion no destructiva.
-4. Poblar geometria a partir de JSON existente.
-5. Validar consultas espaciales.
-6. Reemplazar calculos aproximados por funciones PostGIS.
+Para desarrollo local, recuerda ejecutar:
+```sql
+CREATE EXTENSION postgis;
+```

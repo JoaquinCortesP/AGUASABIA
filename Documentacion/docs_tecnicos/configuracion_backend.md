@@ -7,10 +7,10 @@ Esta guia indica como levantar el backend localmente para ejecutar pruebas de la
 ## Requisitos
 
 - Python 3.10 o superior.
-- PostgreSQL.
+- PostgreSQL **con extensión PostGIS habilitada**.
 - Git.
 - Entorno virtual Python.
-- Conexion a internet para consumir Open-Meteo.
+- Conexión a internet para consumir Open-Meteo.
 - Postman para pruebas manuales.
 
 Redis y Celery pueden mantenerse instalados como infraestructura futura, pero no son obligatorios para validar el flujo principal de consulta territorial de esta etapa.
@@ -59,6 +59,11 @@ API_V1_STR=/api/v1
 
 No incluir credenciales reales en screenshots.
 
+Asegúrate de ejecutar lo siguiente en tu base de datos local antes de migrar:
+```sql
+CREATE EXTENSION postgis;
+```
+
 ## Migraciones
 
 Aplicar migraciones:
@@ -101,6 +106,20 @@ API: http://127.0.0.1:8000
 Swagger: http://127.0.0.1:8000/docs
 OpenAPI: http://127.0.0.1:8000/api/v1/openapi.json
 ```
+
+## Levantar Celery (Opcional - Tareas en Segundo Plano)
+
+AguaSabia usa Celery y Redis para sincronizar clima y datos satelitales en la noche.
+
+1. Instalar y arrancar [Redis](https://redis.io/). (En Windows puedes usar Docker: `docker run -p 6379:6379 -d redis`).
+2. Levantar el worker:
+   ```powershell
+   celery -A app.core.celery_app worker --loglevel=info
+   ```
+3. Levantar el scheduler (Beat) en otra terminal:
+   ```powershell
+   celery -A app.core.celery_app beat --loglevel=info
+   ```
 
 ## Flujo minimo para Postman
 
@@ -146,5 +165,5 @@ POST /api/v1/riesgos/poligono
 
 - El frontend no se valida en esta etapa.
 - Las APIs satelitales quedan planificadas para integracion posterior.
-- PostGIS queda planificado, no requerido para estas pruebas.
+- **PostGIS ahora es un requisito activo** para consultas espaciales reales.
 - Agricultores, parcelas, balances y recomendacion de riego son elementos legacy y no forman parte del flujo principal actual.

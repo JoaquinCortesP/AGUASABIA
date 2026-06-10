@@ -8,6 +8,8 @@ from app.models.usuario import Usuario
 from app.models.consulta_territorial import ConsultaTerritorial, ResultadoConsultaModulo
 from app.models.capas_ambientales import (
     Cuenca,
+    Subcuenca,
+    DecretoEscasez,
     EventoIncendio,
     FuenteHidrica,
     IndicadorClimatico,

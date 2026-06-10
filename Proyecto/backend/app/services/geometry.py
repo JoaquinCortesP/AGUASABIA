@@ -1,5 +1,6 @@
 from math import cos, pi
 from typing import Any, Iterable
+from shapely.geometry import Polygon
 
 
 def _as_point(vertex: Any) -> tuple[float, float]:
@@ -81,3 +82,17 @@ def calcular_superficie_aprox_ha(vertices: Iterable[Any]) -> float:
         x_2, y_2 = xy_points[(index + 1) % len(xy_points)]
         area_m2 += x_1 * y_2 - x_2 * y_1
     return round(abs(area_m2) / 2 / 10_000, 4)
+
+def convertir_vertices_a_wkt(vertices: Iterable[Any]) -> str:
+    points = [_as_point(vertex) for vertex in vertices]
+    if len(points) < 3:
+        raise ValueError("El poligono debe tener al menos 3 vertices")
+    
+    # Shapely espera (x, y) es decir (longitud, latitud)
+    lon_lat_points = [(lon, lat) for lat, lon in points]
+    
+    # Asegurar que el poligono se cierra (primer punto == ultimo punto)
+    if lon_lat_points[0] != lon_lat_points[-1]:
+        lon_lat_points.append(lon_lat_points[0])
+        
+    return Polygon(lon_lat_points).wkt

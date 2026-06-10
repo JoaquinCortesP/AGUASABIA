@@ -1,7 +1,9 @@
 from typing import Any
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from app.models.capas_ambientales import Cuenca, DecretoEscasez
 
-
-def evaluar_modulo_agua(clima: dict[str, Any], avanzado_habilitado: bool = False) -> dict[str, Any]:
+def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: str = None, avanzado_habilitado: bool = False) -> dict[str, Any]:
     precipitacion = float(clima.get("precipitacion_mm") or 0)
     et0 = float(clima.get("et0_mm") or 0)
 
@@ -28,13 +30,30 @@ def evaluar_modulo_agua(clima: dict[str, Any], avanzado_habilitado: bool = False
         )
 
     avanzado = {}
-    if avanzado_habilitado:
+    cuencas_intersectadas = []
+    decretos_intersectados = []
+    
+    if db and wkt_polygon and avanzado_habilitado:
+        # Consulta de Cuencas intersectadas
+        cuencas = db.query(Cuenca.nombre).filter(
+            func.ST_Intersects(Cuenca.geometria, func.ST_GeometryFromText(f"SRID=4326;{wkt_polygon}"))
+        ).all()
+        cuencas_intersectadas = [c[0] for c in cuencas]
+        
+        # Consulta de Decretos de Escasez intersectados
+        decretos = db.query(DecretoEscasez.numero_decreto).filter(
+            func.ST_Intersects(DecretoEscasez.geometria, func.ST_GeometryFromText(f"SRID=4326;{wkt_polygon}"))
+        ).all()
+        decretos_intersectados = [d[0] for d in decretos]
+
         avanzado = {
             "et0_mm": et0,
             "precipitacion_mm": precipitacion,
+            "cuencas_dga": cuencas_intersectadas,
+            "decretos_escasez_dga": decretos_intersectados,
             "interpretacion_tecnica": (
-                "ET0 describe la demanda atmosferica de agua de una superficie de referencia. "
-                "No se calcula riego ni litros recomendados en la nueva vision de AguaSabia."
+                "Se ha realizado un cruce espacial con las capas de la DGA. "
+                "Los resultados muestran las cuencas y decretos que intersectan con el polígono consultado."
             ),
         }
 
@@ -52,6 +71,12 @@ def evaluar_modulo_agua(clima: dict[str, Any], avanzado_habilitado: bool = False
                 "tipo": "climatica",
                 "descripcion": "Datos climaticos diarios consultados por centroide del area seleccionada.",
                 "url": "https://open-meteo.com/",
+            },
+            {
+                "nombre": "DGA (Dirección General de Aguas)",
+                "tipo": "territorial",
+                "descripcion": "Cruce espacial con Cuencas y Decretos de Escasez Hídrica.",
+                "url": "https://dga.mop.gob.cl/",
             }
         ],
         "avanzado": avanzado,
