@@ -3,18 +3,22 @@ import { useMutation } from "@tanstack/react-query";
 import { MapContainer } from "@/components/maps/MapContainer";
 import { LayerSelector } from "@/components/maps/LayerSelector";
 import { territorioApi } from "@/features/territorio/api/territorio-api";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import type { Coordinates, TerritoryAnalysisResponse } from "@/types/territory";
 
 export function MapPage() {
+  const { user } = useAuth();
   const [polygon, setPolygon] = useState<Coordinates[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [modo, setModo] = useState<"resumen" | "avanzado">("resumen");
+  const [showPromoModal, setShowPromoModal] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (coords: Coordinates[]) =>
       territorioApi.analizar({
         poligono: coords,
-        modo: "resumen",
-        guardar: false,
+        modo,
+        guardar: !!user,
         modulos: ["agua", "clima", "territorio", "vegetacion", "riesgos"],
       }),
   });
@@ -29,6 +33,18 @@ export function MapPage() {
   const handleClear = () => {
     setPolygon([]);
     mutation.reset();
+  };
+
+  const handleToggleAvanzado = () => {
+    if (!user) {
+      alert("Debes iniciar sesión para usar el modo avanzado");
+      return;
+    }
+    if (user.plan !== "pago") {
+      setShowPromoModal(true);
+      return;
+    }
+    setModo(modo === "resumen" ? "avanzado" : "resumen");
   };
 
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
@@ -54,6 +70,20 @@ export function MapPage() {
               Limpiar
             </button>
           </div>
+          
+          <div className="flex items-center gap-2 py-2">
+            <input 
+              type="checkbox" 
+              id="modoAvanzado" 
+              checked={modo === "avanzado"}
+              onChange={handleToggleAvanzado}
+              className="rounded text-primary focus:ring-primary"
+            />
+            <label htmlFor="modoAvanzado" className="text-sm font-medium text-foreground cursor-pointer">
+              Modo Avanzado (Pro)
+            </label>
+          </div>
+
           <button 
             onClick={handleAnalyze}
             disabled={polygon.length < 3 || mutation.isPending}
@@ -137,6 +167,35 @@ export function MapPage() {
           </div>
         )}
       </div>
+
+      {/* Modal Promocional */}
+      {showPromoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-xl shadow-panel p-8 max-w-sm w-full text-center">
+            <h3 className="text-xl font-bold text-primary mb-2">Mejora tu plan</h3>
+            <p className="text-muted-foreground mb-6">
+              El modo avanzado requiere una suscripción de pago. Obtén acceso a datos técnicos, índices satelitales crudos y cruces espaciales de la DGA.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <button 
+                onClick={() => setShowPromoModal(false)}
+                className="px-4 py-2 bg-muted text-muted-foreground rounded-md hover:bg-muted/80 transition"
+              >
+                Cerrar
+              </button>
+              <button 
+                onClick={() => {
+                  alert("Integración con pasarela de pagos próximamente...");
+                  setShowPromoModal(false);
+                }}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition"
+              >
+                Actualizar a Pro
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

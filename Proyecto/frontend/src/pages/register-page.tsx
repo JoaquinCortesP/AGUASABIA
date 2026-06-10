@@ -1,18 +1,51 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { authApi } from "@/features/auth/api/auth-api";
+import { isAxiosError } from "axios";
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect to backend
-    console.log("Register", { nombre, email, password });
-    navigate("/mapa");
+    setError("");
+    setIsLoading(true);
+    
+    try {
+      await authApi.register({ nombre, email, password });
+      setSuccess(true);
+    } catch (err: any) {
+      if (isAxiosError(err) && err.response) {
+        setError(err.response.data.detail || "Error al registrarse");
+      } else {
+        setError("Error de red o servidor no disponible");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (success) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+        <div className="w-full max-w-md bg-card border border-border rounded-xl shadow-panel p-8 text-center">
+          <h1 className="text-2xl font-bold text-primary mb-4">¡Registro Exitoso!</h1>
+          <p className="text-muted-foreground mb-6">
+            Hemos enviado un correo de verificación a <strong>{email}</strong>. Por favor revisa tu bandeja de entrada para activar tu cuenta antes de iniciar sesión.
+          </p>
+          <Link to="/login" className="inline-block bg-primary text-primary-foreground py-2 px-6 rounded-md font-medium hover:bg-primary/90 transition">
+            Ir a Iniciar Sesión
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
@@ -23,6 +56,11 @@ export function RegisterPage() {
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md border border-destructive/20">
+              {error}
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1">Nombre (Opcional)</label>
             <input 
@@ -54,9 +92,10 @@ export function RegisterPage() {
           </div>
           <button 
             type="submit"
-            className="w-full bg-primary text-primary-foreground py-2 rounded-md font-medium hover:bg-primary/90 transition"
+            disabled={isLoading}
+            className="w-full bg-primary text-primary-foreground py-2 rounded-md font-medium hover:bg-primary/90 transition disabled:opacity-50"
           >
-            Registrarme
+            {isLoading ? "Registrando..." : "Registrarme"}
           </button>
         </form>
         

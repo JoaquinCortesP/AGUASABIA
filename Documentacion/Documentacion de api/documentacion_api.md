@@ -40,6 +40,7 @@ Existen dos tipos de autenticacion:
 | `POST` | `/api/v1/usuarios/register` | Registrar usuario basico. |
 | `POST` | `/api/v1/usuarios/login`    | Login de usuario.         |
 | `GET`  | `/api/v1/usuarios/me`       | Ver usuario autenticado.  |
+| `POST` | `/api/v1/usuarios/verify-email`| Verificar correo del usuario. |
 
 Ejemplo registro:
 
@@ -176,7 +177,7 @@ Mientras no existan capas externas conectadas, el modulo debe indicar estado pen
 | `201` | Recurso creado.                                                       |
 | `400` | Credenciales invalidas o entidad inactiva.                            |
 | `401` | Falta autenticacion.                                                  |
-| `403` | Usuario sin permiso.                                                  |
+| `403` | Usuario sin permiso (ej. requiere plan avanzado) o cuenta no verificada. |
 | `404` | Recurso no encontrado.                                                |
 | `422` | Entrada invalida, coordenadas fuera de rango o poligono insuficiente. |
 | `502` | Respuesta externa incompleta o rechazada.                             |

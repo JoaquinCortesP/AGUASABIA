@@ -75,6 +75,11 @@ async def analizar_area(
 ) -> dict[str, Any]:
     if payload.guardar and current_usuario is None:
         raise HTTPException(status_code=401, detail="Debe iniciar sesion para guardar consultas")
+    if payload.modo == "avanzado":
+        if current_usuario is None:
+            raise HTTPException(status_code=401, detail="Debe iniciar sesion para usar el modo avanzado")
+        if current_usuario.plan != "pago":
+            raise HTTPException(status_code=403, detail="Mejora tu plan a 'Pago' para acceder a opciones avanzadas")
     try:
         return await analizar_consulta_territorial(
             db=db,

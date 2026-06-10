@@ -30,10 +30,15 @@ def register_usuario(
         hashed_password=security.get_password_hash(usuario_in.password),
         plan="gratis",
         is_active=True,
+        is_verified=False, # TODO: Send verification email
     )
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
+    
+    # Placeholder for email sending service (e.g., SendGrid/Resend)
+    print(f"ENVIANDO EMAIL DE VERIFICACION A: {usuario.email}")
+    
     return usuario
 
 
@@ -52,6 +57,8 @@ def login_usuario(
         )
     if not usuario.is_active:
         raise HTTPException(status_code=400, detail="Usuario inactivo")
+    if not usuario.is_verified:
+        raise HTTPException(status_code=403, detail="Por favor verifica tu correo electronico antes de iniciar sesion")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
@@ -69,3 +76,17 @@ def read_usuario_me(
     current_usuario: Usuario = Depends(deps.get_current_usuario),
 ) -> Usuario:
     return current_usuario
+
+@router.post("/verify-email")
+def verify_email(
+    email: str,
+    db: Session = Depends(deps.get_db),
+) -> Any:
+    # This is a placeholder endpoint. In a real app, it would take a token, not an email directly.
+    usuario = db.query(Usuario).filter(Usuario.email == email).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    usuario.is_verified = True
+    db.commit()
+    return {"msg": "Correo verificado exitosamente"}
