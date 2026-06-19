@@ -108,5 +108,6 @@ class EstacionHidrometrica(Base):
     objectid = Column(Integer, primary_key=True)
     cod_estacion = Column(String(50), nullable=True)
     nombre = Column(String(255), nullable=True)
+    tipo_estacion = Column(String(100), nullable=True)
     geom = Column(Geometry('POINT', srid=4326))
 

@@ -183,6 +183,43 @@ Mientras no existan capas externas conectadas, el modulo debe indicar estado pen
 | `502` | Respuesta externa incompleta o rechazada.                             |
 | `503` | API externa no disponible.                                            |
 
+## Ingesta y Sincronización Externa (DGA / MOP)
+
+| Metodo   | Ruta                                 | Uso                                                                                             |
+| -------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `POST` | `/api/v1/ingest/red-hidrometrica` | Inicia el pipeline asíncrono que descarga las estaciones desde ArcGIS Server (SIT-MOP) a la BD. |
+
+Este endpoint devuelve un código `202 Accepted` de inmediato mientras el proceso corre en segundo plano (`BackgroundTasks`) con backoff exponencial.
+
+## 🚀 Guía de Uso Rápido con Postman
+
+Para facilitar las pruebas de la API sin necesidad de escribir código cliente, el proyecto incluye una colección de Postman pre-configurada.
+
+### Paso 1: Importar la Colección
+1. Abre **Postman**.
+2. Haz clic en el botón **Import** (arriba a la izquierda).
+3. Selecciona el archivo que se encuentra en el repositorio del proyecto:
+   `Documentacion/postman/AguaSabia-Backend.postman_collection.json`
+*(Nota: Si no tienes el archivo a mano, puedes crear solicitudes manuales apuntando a `http://127.0.0.1:8000/api/v1/...`)*
+
+### Paso 2: Autenticación (Tokens JWT)
+La gran mayoría de los endpoints de lectura avanzada o de guardado requieren que el usuario inicie sesión.
+1. Ejecuta el endpoint `POST /api/v1/usuarios/login` (o `/api/v1/usuarios/register` si aún no tienes cuenta). En el body tipo JSON envía el `email` y `password`.
+2. La respuesta contendrá un `access_token` (un texto largo cifrado).
+3. Copia ese token.
+4. Para las siguientes peticiones (por ejemplo, ver consultas guardadas), ve a la pestaña **Authorization** en Postman, elige el tipo **Bearer Token** y pega el token en la caja.
+
+### Paso 3: Probar Endpoints Geoespaciales
+La API acepta y entrega datos espaciales nativos gracias a PostGIS.
+Para probar `/api/v1/territorio/consultas/analizar`, asegúrate de configurar tu petición así:
+- **Método**: `POST`
+- **URL**: `http://localhost:8000/api/v1/territorio/consultas/analizar`
+- **Headers**: `Content-Type: application/json`
+- **Body**: (Selecciona *raw* y pega el JSON de ejemplo que vimos arriba en la sección Territorio).
+
+### Paso 4: Probar la Ingesta del MOP
+Puedes disparar la descarga de las estaciones de la DGA directamente enviando un `POST` vacío a `http://localhost:8000/api/v1/ingest/red-hidrometrica`. Revisa la consola donde está corriendo Uvicorn para ver los logs en vivo de la descarga asíncrona.
+
 ## Endpoints legacy
 
 Los endpoints de agricultores, parcelas, balances y recomendacion de riego quedan como legado tecnico de etapas anteriores.

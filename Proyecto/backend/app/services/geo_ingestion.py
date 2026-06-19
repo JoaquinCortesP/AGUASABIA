@@ -36,7 +36,7 @@ async def fetch_chunk_with_backoff(client: httpx.AsyncClient, url: str, oids: Li
     """Obtiene un lote de registros con Retroceso Exponencial y Jitter."""
     payload = {
         'objectIds': ','.join(map(str, oids)),
-        'outFields': 'OBJECTID,COD_ESTACION,NOM_ESTACION',
+        'outFields': 'OBJECTID,COD_BNA,NOM_ESTACION,TIPO_ESTACION',
         'returnGeometry': 'true',
         'outSR': '4326',
         'f': 'json'
@@ -102,6 +102,7 @@ async def run_dga_pipeline(db_session: Session):
                             objectid=validated_data.objectid,
                             cod_estacion=validated_data.cod_estacion,
                             nombre=validated_data.nombre,
+                            tipo_estacion=validated_data.tipo_estacion,
                             geom=f"SRID=4326;{shapely_geom.wkt}"
                         )
                         stmt = stmt.on_conflict_do_update(
@@ -109,6 +110,7 @@ async def run_dga_pipeline(db_session: Session):
                             set_={
                                 'cod_estacion': stmt.excluded.cod_estacion,
                                 'nombre': stmt.excluded.nombre,
+                                'tipo_estacion': stmt.excluded.tipo_estacion,
                                 'geom': stmt.excluded.geom
                             }
                         )

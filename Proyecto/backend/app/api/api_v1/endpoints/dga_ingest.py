@@ -1,7 +1,9 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
-from app.api.dependencies import get_db
+from app.api.deps import get_db
 from sqlalchemy.orm import Session
 from app.services.geo_ingestion import run_dga_pipeline
+from app.models.capas_ambientales import EstacionHidrometrica
+from sqlalchemy import func
 import logging
 
 logger = logging.getLogger(__name__)
@@ -35,3 +37,37 @@ async def trigger_ingestion(background_tasks: BackgroundTasks, db: Session = Dep
 
     background_tasks.add_task(background_task)
     return {"status": "Proceso de ingesta iniciado en segundo plano."}
+
+@router.get("/estaciones", status_code=200)
+def get_estaciones(limit: int = 10, db: Session = Depends(get_db)):
+    """
+    Endpoint rápido para que el Frontend o Postman puedan ver las estaciones recién descargadas.
+    Retorna GeoJSON.
+    """
+    # Usamos ST_AsGeoJSON para convertir directamente la geometría en PostGIS a JSON usable por Leaflet
+    resultados = db.query(
+        EstacionHidrometrica.objectid,
+        EstacionHidrometrica.cod_estacion,
+        EstacionHidrometrica.nombre,
+        EstacionHidrometrica.tipo_estacion,
+        func.ST_AsGeoJSON(EstacionHidrometrica.geom).label("geojson")
+    ).limit(limit).all()
+
+    import json
+    features = []
+    for r in resultados:
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "objectid": r.objectid,
+                "cod_estacion": r.cod_estacion,
+                "nombre": r.nombre,
+                "tipo_estacion": r.tipo_estacion
+            },
+            "geometry": json.loads(r.geojson) if r.geojson else None
+        })
+
+    return {
+        "type": "FeatureCollection",
+        "features": features
+    }
