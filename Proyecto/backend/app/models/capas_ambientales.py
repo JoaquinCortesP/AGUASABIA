@@ -100,3 +100,13 @@ class IndiceSequia(Base):
     categoria = Column(String, nullable=True)
     fuente = Column(String, nullable=True)
     datos_json = Column(JSON, nullable=True)
+
+
+class EstacionHidrometrica(Base):
+    __tablename__ = 'estaciones_hidrometricas'
+    
+    objectid = Column(Integer, primary_key=True)
+    cod_estacion = Column(String(50), nullable=True)
+    nombre = Column(String(255), nullable=True)
+    geom = Column(Geometry('POINT', srid=4326))
+
