@@ -9,11 +9,10 @@ El enfoque del proyecto es entregar una **explicación clara para usuarios no t�
 - **Territorio**: Recepción de polígonos dibujados por el usuario, cálculo de área y centroides matemáticos mediante **PostGIS**.
 - **Clima**: Consumo de Open-Meteo para inyectar datos de temperatura y precipitaciones.
 - **Agua**: Cruce espacial con capas oficiales de la Dirección General de Aguas (DGA) para cuencas y decretos de escasez hídrica (`ST_Intersects`).
-- **Vegetación**: Integración programada con **Google Earth Engine (Sentinel-2)** para calcular el índice NDVI de los terrenos.
-- **Riesgos**: Algoritmo de inferencia que evalúa riesgo de sequía y estrés hídrico combinando el NDVI y el clima.
+- **Vegetación y Riesgos**: Integración con **Google Earth Engine (Sentinel-2)** para calcular el índice NDVI y anomalías térmicas *(Actualmente en Preparación / Desarrollo)*.
 - **Usuarios**: Autenticación JWT, verificación de correo simulada, guardado de consultas y restricción de "Modo Avanzado" mediante roles (`plan='pago'`).
 - **Admin**: Acceso interno a métricas de uso del sistema.
-- **Automatización**: Tareas en segundo plano (Celery + Redis) configuradas para sincronización de datos nocturnos.
+- **Automatización [En Preparación]**: Tareas en segundo plano (Celery + Redis) configuradas para sincronización de datos nocturnos en despliegue nube.
 
 ---
 
@@ -70,12 +69,12 @@ uvicorn app.main:app --reload
 La API estará disponible en: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) (Swagger UI).
 
 ### 3. Ingestar Datos DGA Oficiales (Opcional pero Recomendado)
-Si quieres probar los cruces espaciales, debes cargar los datos gubernamentales:
-1. Descarga los `GeoJSON` de Cuencas y Decretos de Escasez desde la web de la DGA.
+Si quieres probar los cruces espaciales reales y visualizar Decretos, Acuíferos y Ríos, debes correr los scripts de ingesta automatizada que extraen los polígonos desde la API del MOP:
+1. Asegúrate que tu entorno virtual esté activado.
 2. Ejecuta en tu terminal del backend:
    ```powershell
-   python scripts/ingest_dga.py ruta_a_tu_archivo/cuencas.geojson cuencas
-   python scripts/ingest_dga.py ruta_a_tu_archivo/decretos.geojson decretos
+   python scripts/sync_capas_oficiales.py
+   python scripts/sync_geo_data.py
    ```
 
 ### 4. Levantar el Frontend (Interfaz Visual)
@@ -108,6 +107,6 @@ El detalle profundo del desarrollo, historias de usuario, requerimientos y casos
 - **Estructura Arquitectónica:** `Documentacion/Estructura del proyecto/project-structure.md`
 - **Requerimientos (Matriz de Trazabilidad):** `Documentacion/Matriz de trazabilidad/matriz_trazabilidad.md`
 - **Historias de Usuario (con criterios de aceptación):** `Documentacion/Matriz de trazabilidad/historias_usuario.md`
-- **Guía de Configuración Completa:** `Documentacion/docs_tecnicos/paso_a_paso_configuracion.md`
+- **Tutorial Completo y Docs. Técnicos:** `Documentacion/docs_tecnicos/tutorial_y_documentacion_completa.md`
 - **Plan de Pruebas y Evidencias:** `Documentacion/docs_tecnicos/plan_pruebas_aguasabia.md`
 - **Endpoints de la API:** `Documentacion/Documentacion de api/api-documentation.md`
