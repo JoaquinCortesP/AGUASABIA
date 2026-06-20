@@ -280,6 +280,56 @@ export function MapPage() {
                 ) : (
                   <div className="text-[10px] text-emerald-500 mt-1 font-semibold">✓ Sin decretos de escasez hídrica activos.</div>
                 )}
+
+                {/* Acuíferos Protegidos */}
+                {modulo.avanzado?.acuiferos_protegidos && modulo.avanzado.acuiferos_protegidos.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-primary font-semibold">Acuíferos Protegidos:</span>
+                    <ul className="list-disc list-inside pl-1 text-[10px] text-muted-foreground font-mono mt-0.5">
+                      {modulo.avanzado.acuiferos_protegidos.map((d: string, idx: number) => <li key={idx}>{d}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Áreas de Restricción */}
+                {modulo.avanzado?.areas_restriccion && modulo.avanzado.areas_restriccion.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-amber-500 font-semibold">Restricción / Prohibición:</span>
+                    <ul className="list-disc list-inside pl-1 text-[10px] text-amber-500 font-mono mt-0.5">
+                      {modulo.avanzado.areas_restriccion.map((a: any, idx: number) => <li key={idx}>{a.nombre} ({a.tipo})</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Agotamiento */}
+                {modulo.avanzado?.declaraciones_agotamiento && modulo.avanzado.declaraciones_agotamiento.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-destructive font-semibold">Ríos Agotados:</span>
+                    <ul className="list-disc list-inside pl-1 text-[10px] text-destructive font-mono mt-0.5">
+                      {modulo.avanzado.declaraciones_agotamiento.map((d: string, idx: number) => <li key={idx}>{d}</li>)}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* Decretos de Reserva */}
+                {modulo.avanzado?.decretos_reserva && modulo.avanzado.decretos_reserva.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-sky-500 font-semibold">Decretos Caudal Reserva:</span>
+                    <ul className="list-disc list-inside pl-1 text-[10px] text-sky-500 font-mono mt-0.5">
+                      {modulo.avanzado.decretos_reserva.map((d: string, idx: number) => <li key={idx}>{d}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Embalses */}
+                {modulo.avanzado?.embalses_cercanos && modulo.avanzado.embalses_cercanos.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-blue-500 font-semibold">Embalses cercanos (5km):</span>
+                    <ul className="list-disc list-inside pl-1 text-[10px] text-blue-500 font-mono mt-0.5">
+                      {modulo.avanzado.embalses_cercanos.map((d: string, idx: number) => <li key={idx}>{d}</li>)}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -327,9 +377,25 @@ export function MapPage() {
               La consulta abarca {area.toFixed(2)} hectáreas. Coordenadas validadas correctamente.
             </p>
 
-            {isPremiumPro && (
-              <div className="bg-primary/5 border border-primary/15 p-2.5 rounded-lg text-xs leading-relaxed text-muted-foreground">
-                <strong>✓ Validación PostGIS:</strong> Polígono verificado espacialmente en la proyección WGS84 (SRID 4326).
+            {isPremiumPro && modulo.avanzado && (
+              <div className="bg-primary/5 border border-primary/15 p-2.5 rounded-lg text-xs leading-relaxed text-muted-foreground space-y-2">
+                <div>
+                  <strong className="text-primary block">✓ Validación PostGIS:</strong> Polígono verificado espacialmente en la proyección WGS84 (SRID 4326).
+                </div>
+                {modulo.avanzado.humedales_cercanos && (
+                  <div>
+                    <strong className="text-emerald-600 dark:text-emerald-400 block mt-2">🌿 Humedales Detectados:</strong>
+                    <ul className="list-disc pl-4 text-[10px] mt-1">
+                      {modulo.avanzado.humedales_cercanos.map((h: string, idx: number) => <li key={idx}>{h}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {modulo.avanzado.factibilidad_economica && (
+                  <div>
+                    <strong className="text-amber-600 dark:text-amber-400 block mt-2">💰 Factibilidad Económica (IA):</strong>
+                    <p className="text-[10px] mt-1">{modulo.avanzado.factibilidad_economica}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -453,6 +519,7 @@ export function MapPage() {
           drawEnabled={isDrawing}
           area={analysisResult?.area}
           estaciones={estacionesFiltradas}
+          activeLayers={activeLayers}
           className="h-full rounded-xl shadow-lg border border-border/60 overflow-hidden"
         />
       </div>
@@ -511,7 +578,7 @@ export function MapPage() {
 
         {mutation.isError && (
           <div className="bg-destructive/10 text-destructive p-4 rounded-xl text-xs border border-destructive/20">
-            Ocurrió un error al analizar el territorio. Asegúrate de que el polígono esté dentro del territorio nacional y no posee cruces de líneas inválidas.
+            {(mutation.error as any)?.response?.data?.detail || "Ocurrió un error al analizar el territorio. Asegúrate de que el polígono esté dentro del territorio nacional y no posee cruces de líneas inválidas."}
           </div>
         )}
 

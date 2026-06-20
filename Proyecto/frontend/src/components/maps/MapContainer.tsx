@@ -21,6 +21,7 @@ interface TerritoryMapContainerProps {
   className?: string;
   area?: AnalyzedArea | null;
   estaciones?: any[];
+  activeLayers?: string[];
 }
 
 const getEstacionColor = (tipo: string) => {
@@ -41,8 +42,23 @@ export function MapContainer({
   className,
   area,
   estaciones = [],
+  activeLayers = [],
 }: TerritoryMapContainerProps) {
   const positions = toLeafletLatLng(polygon);
+
+  let polyColor = "#0e7490";
+  let polyFill = "#2aa889";
+  let polyOpacity = 0.2;
+
+  if (activeLayers.includes("ndvi")) {
+    polyColor = "#ff0000"; // Infrarrojo simulado
+    polyFill = "#ff3333";
+    polyOpacity = 0.5;
+  } else if (activeLayers.includes("sequia") || activeLayers.includes("incendios")) {
+    polyColor = "#8b0000"; // Rojo oscuro sequia
+    polyFill = "#cc0000";
+    polyOpacity = 0.4;
+  }
 
   return (
     <div className={cn("relative h-full min-h-[520px] overflow-hidden rounded-lg border border-border", className)}>
@@ -69,9 +85,9 @@ export function MapContainer({
           <Polygon
             positions={positions}
             pathOptions={{
-              color: "#0e7490",
-              fillColor: "#2aa889",
-              fillOpacity: 0.2,
+              color: polyColor,
+              fillColor: polyFill,
+              fillOpacity: polyOpacity,
               weight: 2,
             }}
           >

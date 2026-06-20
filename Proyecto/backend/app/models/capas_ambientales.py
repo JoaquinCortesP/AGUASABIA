@@ -111,3 +111,37 @@ class EstacionHidrometrica(Base):
     tipo_estacion = Column(String(100), nullable=True)
     geom = Column(Geometry('POINT', srid=4326))
 
+
+class AcuiferoProtegido(Base):
+    __tablename__ = "acuiferos_protegidos"
+    
+    objectid = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=True)
+    region = Column(String(255), nullable=True)
+    geom = Column(Geometry('MULTIPOLYGON', srid=4326))
+
+
+class AreaRestriccionProhibicion(Base):
+    __tablename__ = "areas_restriccion_prohibicion"
+    
+    objectid = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=True)
+    tipo = Column(String(100), nullable=True)  # Restriccion o Prohibicion
+    geom = Column(Geometry('MULTIPOLYGON', srid=4326))
+
+
+class DeclaracionAgotamiento(Base):
+    __tablename__ = "declaracion_agotamiento"
+    
+    objectid = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=True)
+    geom = Column(Geometry('MULTIPOLYGON', srid=4326))
+
+
+class DecretoCaudalReserva(Base):
+    __tablename__ = "decretos_caudales_reserva"
+    
+    objectid = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=True)
+    geom = Column(Geometry('MULTIPOLYGON', srid=4326))
+
