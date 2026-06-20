@@ -113,9 +113,13 @@ async def analizar_consulta_territorial(
     wkt_polygon = convertir_vertices_a_wkt(poligono)
     
     # Calcular superficie real usando PostGIS ST_Area(geography)
-    from sqlalchemy import func
-    superficie_m2 = db.scalar(func.ST_Area(func.ST_GeographyFromText(f"SRID=4326;{wkt_polygon}")))
-    superficie_aprox_ha = round(float(superficie_m2) / 10000, 4) if superficie_m2 else calcular_superficie_aprox_ha(poligono)
+    try:
+        from sqlalchemy import func
+        superficie_m2 = db.scalar(func.ST_Area(func.ST_GeographyFromText(f"SRID=4326;{wkt_polygon}")))
+        superficie_aprox_ha = round(float(superficie_m2) / 10000, 4) if superficie_m2 else calcular_superficie_aprox_ha(poligono)
+    except Exception as e:
+        print(f"Error PostGIS en ST_Area: {e}. Usando calculo plano de fallback.")
+        superficie_aprox_ha = calcular_superficie_aprox_ha(poligono)
 
     clima = await obtener_clima_diario(centroide["latitud"], centroide["longitud"])
 
@@ -180,6 +184,7 @@ async def analizar_consulta_territorial(
             "centroide": centroide,
             "bbox": bbox,
             "superficie_aprox_ha": superficie_aprox_ha,
+            "poligono": poligono,
         },
         "modulos": modulos,
     }
@@ -230,6 +235,7 @@ async def analizar_consulta_territorial(
             "centroide": centroide,
             "bbox": bbox,
             "superficie_aprox_ha": superficie_aprox_ha,
+            "poligono": poligono,
         },
         "resumen_general": resumen_general,
         "modulos": modulos,

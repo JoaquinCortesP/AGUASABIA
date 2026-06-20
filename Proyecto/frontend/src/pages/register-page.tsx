@@ -19,6 +19,12 @@ export function RegisterPage() {
     
     try {
       await authApi.register({ nombre, email, password });
+      // Simular verificación automática para desarrollo/demostración
+      try {
+        await authApi.verifyEmail(email);
+      } catch (verifErr) {
+        console.error("Error al verificar correo automáticamente:", verifErr);
+      }
       setSuccess(true);
     } catch (err: any) {
       if (isAxiosError(err) && err.response) {
@@ -37,7 +43,7 @@ export function RegisterPage() {
         <div className="w-full max-w-md bg-card border border-border rounded-xl shadow-panel p-8 text-center">
           <h1 className="text-2xl font-bold text-primary mb-4">¡Registro Exitoso!</h1>
           <p className="text-muted-foreground mb-6">
-            Hemos enviado un correo de verificación a <strong>{email}</strong>. Por favor revisa tu bandeja de entrada para activar tu cuenta antes de iniciar sesión.
+            Hemos creado tu cuenta. <strong className="text-primary font-semibold">Para propósitos de demostración y pruebas académicas, tu correo electrónico ({email}) ha sido verificado automáticamente</strong> en el sistema. Ya puedes iniciar sesión de forma inmediata.
           </p>
           <Link to="/login" className="inline-block bg-primary text-primary-foreground py-2 px-6 rounded-md font-medium hover:bg-primary/90 transition">
             Ir a Iniciar Sesión
@@ -46,6 +52,7 @@ export function RegisterPage() {
       </div>
     );
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">

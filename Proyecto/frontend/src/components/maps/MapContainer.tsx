@@ -20,7 +20,19 @@ interface TerritoryMapContainerProps {
   drawEnabled?: boolean;
   className?: string;
   area?: AnalyzedArea | null;
+  estaciones?: any[];
 }
+
+const getEstacionColor = (tipo: string) => {
+  const t = (tipo || "").toLowerCase();
+  if (t.includes("fluvio")) return "#3388ff";     // Azul (Ríos)
+  if (t.includes("meteor")) return "#ff3333";     // Rojo (Clima)
+  if (t.includes("control") || t.includes("nivel")) return "#33ff33";   // Verde (Lagos/Embalses)
+  if (t.includes("calidad")) return "#ff33ff";   // Magenta
+  if (t.includes("glacio")) return "#ffffff";      // Blanco (Nieve)
+  if (t.includes("nivo")) return "#ccffff";        // Celeste claro
+  return "#808080"; // Gris por defecto
+};
 
 export function MapContainer({
   polygon,
@@ -28,6 +40,7 @@ export function MapContainer({
   drawEnabled = false,
   className,
   area,
+  estaciones = [],
 }: TerritoryMapContainerProps) {
   const positions = toLeafletLatLng(polygon);
 
@@ -78,9 +91,52 @@ export function MapContainer({
               weight: 2,
             }}
           >
-            <Tooltip sticky>Centroide del analisis</Tooltip>
+            <Tooltip sticky>Centroide del análisis</Tooltip>
           </CircleMarker>
         ) : null}
+        {estaciones.map((feature: any) => {
+          if (!feature.geometry || !feature.geometry.coordinates) return null;
+          const [lon, lat] = feature.geometry.coordinates;
+          const tipo = feature.properties.tipo_estacion;
+          const color = getEstacionColor(tipo);
+          
+          return (
+            <CircleMarker
+              key={feature.properties.cod_estacion || feature.properties.objectid}
+              center={[lat, lon]}
+              radius={6}
+              pathOptions={{
+                color: "#000000",
+                fillColor: color,
+                fillOpacity: 0.8,
+                weight: 1,
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -10]}>
+                <div className="font-sans min-w-[160px] p-1 text-slate-800 dark:text-slate-100">
+                  <h4 className="font-bold text-sm mb-1 leading-tight text-slate-900 dark:text-white">
+                    {feature.properties.nombre}
+                  </h4>
+                  <p className="text-xs leading-normal">
+                    <span className="font-semibold text-slate-500 dark:text-slate-400">Código:</span> {feature.properties.cod_estacion}<br />
+                    <span className="font-semibold text-slate-500 dark:text-slate-400">Tipo:</span>{" "}
+                    <span
+                      style={{
+                        color: color,
+                        fontWeight: "bold",
+                        background: "#1e293b",
+                        padding: "1px 5px",
+                        borderRadius: "3px",
+                      }}
+                    >
+                      {tipo}
+                    </span>
+                  </p>
+                </div>
+              </Tooltip>
+            </CircleMarker>
+          );
+        })}
       </LeafletMapContainer>
     </div>
   );

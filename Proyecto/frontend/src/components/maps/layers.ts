@@ -8,8 +8,8 @@ export interface MapLayerDefinition {
 }
 
 export const environmentalLayers: MapLayerDefinition[] = [
-  { id: "rios", label: "Rios", category: "agua", status: "pendiente" },
-  { id: "embalses", label: "Embalses", category: "agua", status: "pendiente" },
+  { id: "rios", label: "Rios", category: "agua", status: "preparada" },
+  { id: "embalses", label: "Embalses", category: "agua", status: "preparada" },
   { id: "cuencas", label: "Cuencas", category: "territorio", status: "pendiente" },
   { id: "ndvi", label: "NDVI", category: "vegetacion", status: "pendiente" },
   { id: "sequia", label: "Sequia", category: "riesgos", status: "pendiente" },

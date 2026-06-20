@@ -115,7 +115,11 @@ def get_optional_usuario(
     if not token:
         return None
 
-    token_data = _decode_token(token)
+    try:
+        token_data = _decode_token(token)
+    except Exception:
+        return None
+
     if token_data.role != "usuario" or token_data.sub is None:
         return None
 

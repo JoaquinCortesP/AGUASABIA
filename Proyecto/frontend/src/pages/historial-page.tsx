@@ -1,9 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { territorioApi } from "@/features/territorio/api/territorio-api";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 
 export function HistorialPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const isFree = user && user.plan !== "pago" && user.role !== "admin";
 
   const { data: consultas, isLoading, isError } = useQuery({
     queryKey: ["historial"],
@@ -26,7 +30,16 @@ export function HistorialPage() {
   return (
     <div className="container mx-auto p-8 max-w-6xl">
       <h1 className="text-3xl font-bold text-primary mb-2">Historial de Consultas</h1>
-      <p className="text-muted-foreground mb-8">Revisa tus análisis territoriales previos guardados en el sistema.</p>
+      <p className="text-muted-foreground mb-4">Revisa tus análisis territoriales previos guardados en el sistema.</p>
+
+      {isFree && (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-xl p-4 mb-6 text-xs leading-relaxed space-y-1">
+          <span className="font-bold block">⚠️ Alerta de Almacenamiento:</span>
+          <p>
+            Tu cuenta gratuita de AguaSabia tiene un límite de almacenamiento de <strong>3 consultas guardadas</strong>. Las consultas nuevas sobrescribirán las más antiguas automáticamente. Para almacenamiento ilimitado y análisis de cuencas DGA, considera mejorar tu plan.
+          </p>
+        </div>
+      )}
 
       {isLoading && <div className="text-center py-10">Cargando historial...</div>}
       {isError && <div className="text-red-500 py-10">Ocurrió un error al cargar el historial. Verifica tu conexión.</div>}
@@ -62,7 +75,7 @@ export function HistorialPage() {
                     {item.resumen_general || "Análisis general territorial"}
                   </td>
                   <td className="p-4 text-right space-x-3">
-                    <Link to={`/historial/${item.id}`} className="text-primary hover:underline text-sm font-medium">
+                    <Link to={`/mapa?consulta_id=${item.id}`} className="text-primary hover:underline text-sm font-medium">
                       Ver detalle
                     </Link>
                     <button 

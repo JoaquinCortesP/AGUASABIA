@@ -135,6 +135,26 @@ def leer_consulta_guardada(
 
     resultado = consulta.resultado_json or {}
     avanzado_habilitado = consulta.modo == "avanzado" and usuario_tiene_modo_avanzado(current_usuario)
+    
+    from geoalchemy2.shape import to_shape
+    try:
+        shape = to_shape(consulta.poligono)
+        vertices = [{"latitud": lat, "longitud": lon} for lon, lat in shape.exterior.coords]
+    except Exception as e:
+        print(f"Error parseando poligono de base de datos: {e}")
+        vertices = []
+
+    area_data = resultado.get("area") or {}
+    area_out = {
+        "centroide": area_data.get("centroide") or {
+            "latitud": consulta.centroide_latitud,
+            "longitud": consulta.centroide_longitud,
+        },
+        "bbox": area_data.get("bbox") or consulta.bbox,
+        "superficie_aprox_ha": area_data.get("superficie_aprox_ha") or consulta.superficie_aprox_ha,
+        "poligono": vertices,
+    }
+
     return {
         "consulta_id": consulta.id,
         "guardada": consulta.guardada,
@@ -144,17 +164,7 @@ def leer_consulta_guardada(
         "requiere_plan_pago": consulta.modo == "avanzado" and not avanzado_habilitado,
         "limite_diario_visitante": None,
         "consultas_restantes_visitante": None,
-        "area": resultado.get(
-            "area",
-            {
-                "centroide": {
-                    "latitud": consulta.centroide_latitud,
-                    "longitud": consulta.centroide_longitud,
-                },
-                "bbox": consulta.bbox,
-                "superficie_aprox_ha": consulta.superficie_aprox_ha,
-            },
-        ),
+        "area": area_out,
         "resumen_general": consulta.resumen_general or "",
         "modulos": resultado.get("modulos", {}),
     }

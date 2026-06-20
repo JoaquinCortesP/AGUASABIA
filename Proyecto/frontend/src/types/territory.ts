@@ -26,6 +26,7 @@ export interface AnalyzedArea {
   centroide: Coordinates;
   bbox: BBox;
   superficie_aprox_ha?: number | null;
+  poligono?: Coordinates[] | null;
 }
 
 export interface DataSource {

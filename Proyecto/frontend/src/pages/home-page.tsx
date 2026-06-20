@@ -2,71 +2,111 @@ import { Link } from "react-router-dom";
 
 export function HomePage() {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Hero Section */}
-      <section className="w-full py-20 md:py-32 flex flex-col items-center justify-center text-center px-4 bg-gradient-to-b from-background to-muted/30">
-        <div className="max-w-4xl space-y-6">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground">
-            Comprende el estado hídrico y ambiental de cualquier territorio en Chile.
+      <section className="relative w-full py-24 md:py-36 flex flex-col items-center justify-center text-center px-4 overflow-hidden border-b border-border/40">
+        {/* Subtle decorative background gradient */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
+        
+        <div className="max-w-4xl space-y-6 relative z-10">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 border border-primary/20 text-primary uppercase tracking-wider">
+            🔬 Investigación & Tecnología Territorial
+          </span>
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground leading-tight">
+            Plataforma Territorial de <br />
+            <span className="text-brand-gradient">Diagnóstico Hídrico y Resiliencia</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            AguaSabia es la plataforma geoespacial de consulta territorial que automatiza la interpretación de datos satelitales, climáticos y geográficos para una mejor toma de decisiones.
+          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            AguaSabia integra modelos de evapotranspiración de referencia y datos satelitales con cartografía de la Dirección General de Aguas (DGA) para estimar balances de agua a nivel predial y proveer reportes de resiliencia climática en Chile.
           </p>
-          <div className="pt-8">
+          <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link 
               to="/mapa" 
-              className="bg-primary text-primary-foreground px-8 py-4 rounded-lg font-semibold text-lg hover:bg-primary/90 transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 duration-200"
+              className="w-full sm:w-auto bg-gradient-to-r from-primary to-amber-500 hover:from-primary/95 hover:to-amber-500/95 text-primary-foreground font-semibold px-8 py-4 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
             >
-              Comenzar Análisis
+              Comenzar Análisis Predial
+            </Link>
+            <Link 
+              to="/aprender" 
+              className="w-full sm:w-auto bg-muted/65 hover:bg-muted border border-border/80 text-foreground font-semibold px-8 py-4 rounded-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Simular Balance Hídrico
             </Link>
           </div>
         </div>
       </section>
 
       {/* Qué analiza Sección */}
-      <section className="w-full py-20 bg-card border-y border-border">
+      <section className="w-full py-20 bg-card/45 backdrop-blur-sm border-b border-border/40">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight mb-4">¿Qué analiza AguaSabia?</h2>
-            <p className="text-muted-foreground">Consolidamos docenas de capas de información pública y satelital en reportes simples y educativos.</p>
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <h2 className="text-3xl font-bold tracking-tight mb-4">Módulos de Diagnóstico Geoespacial</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Consolidamos variables satelitales (Sentinel-2), climáticas (Open-Meteo) y geográficas públicas en reportes estructurados para el monitoreo de recursos prediales.
+            </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { title: "Agua", desc: "Disponibilidad hídrica, cuencas, y estado de embalses cercanos.", icon: "💧" },
-              { title: "Clima", desc: "Condiciones actuales, índices de sequía y proyecciones de evapotranspiración.", icon: "🌤️" },
-              { title: "Vegetación", desc: "Análisis satelital (NDVI) para evaluar el vigor y cobertura vegetal.", icon: "🌿" },
-              { title: "Riesgos", desc: "Vulnerabilidad a incendios forestales y estrés hídrico sostenido.", icon: "⚠️" },
+              { 
+                title: "Balance Hídrico Dinámico", 
+                desc: "Estimación del balance diario de humedad en el suelo contrastando la lluvia local frente a la evapotranspiración real calculada para el predio.", 
+                icon: "💧",
+                color: "text-blue-500"
+              },
+              { 
+                title: "Dinámica Climatológica", 
+                desc: "Variables meteorológicas clave de temperatura, humedad y radiación para determinar la demanda de agua de la atmósfera sobre el territorio.", 
+                icon: "🌤️",
+                color: "text-amber-500"
+              },
+              { 
+                title: "Salud y Vigor Vegetal (NDVI)", 
+                desc: "Monitoreo espectral mediante el índice de vegetación NDVI para evaluar la biomasa fotosintéticamente activa y la sequedad foliar.", 
+                icon: "🌿",
+                color: "text-emerald-500"
+              },
+              { 
+                title: "Riesgo Agroambiental", 
+                desc: "Cálculo automatizado de vulnerabilidad territorial frente a escasez hídrica extrema, estrés vegetativo y proximidad a focos de incendio.", 
+                icon: "⚠️",
+                color: "text-red-500"
+              },
             ].map((feature, i) => (
-              <div key={i} className="bg-background border border-border p-6 rounded-xl shadow-sm hover:shadow-md transition">
-                <div className="text-4xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{feature.desc}</p>
+              <div key={i} className="bg-card border border-border/50 p-7 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 gold-glow-border group">
+                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">{feature.icon}</div>
+                <h3 className="text-lg font-bold mb-3 text-foreground">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Funcionalidades Sección */}
-      <section className="w-full py-20 bg-background">
-        <div className="container mx-auto px-4 text-center max-w-3xl">
-          <h2 className="text-3xl font-bold tracking-tight mb-6">¿Por qué es importante la gestión del agua?</h2>
-          <p className="text-lg text-muted-foreground leading-relaxed mb-12">
-            La crisis climática exige herramientas accesibles. AguaSabia no solo muestra datos, sino que los interpreta. Nuestro objetivo es educar a la población y asistir a tomadores de decisiones mediante:
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-            <div>
-              <h4 className="font-semibold text-lg mb-2 text-primary">Interpretación Automática</h4>
-              <p className="text-muted-foreground text-sm">Convertimos números complejos en conclusiones claras y aplicables.</p>
+      {/* Importancia Sección */}
+      <section className="w-full py-24 bg-background">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-3xl font-bold tracking-tight mb-6">Ciencia de Datos Aplicada a la Gestión del Agua</h2>
+            <p className="text-base text-muted-foreground leading-relaxed">
+              La adaptación al cambio climático requiere herramientas geoespaciales precisas. AguaSabia reduce la brecha técnica mediante la interpretación automatizada de datos a escala predial para tres ejes de acción:
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-left">
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold">1</div>
+              <h4 className="font-bold text-lg text-foreground">Transferencia Tecnológica</h4>
+              <p className="text-sm text-muted-foreground leading-relaxed">Traducimos conjuntos de datos científicos complejos de sensores remotos y modelos globales a un formato didáctico y accionable para agricultores, técnicos y planificadores.</p>
             </div>
-            <div>
-              <h4 className="font-semibold text-lg mb-2 text-primary">Visualización Geográfica</h4>
-              <p className="text-muted-foreground text-sm">Dibuja polígonos exactos en un mapa interactivo para delimitar tu área de interés.</p>
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold">2</div>
+              <h4 className="font-bold text-lg text-foreground">Resolución Geoespacial</h4>
+              <p className="text-sm text-muted-foreground leading-relaxed">Permite delimitar polígonos exactos sobre mapas cartográficos interactivos para realizar cruces con la red hidrométrica de la Dirección General de Aguas (DGA).</p>
             </div>
-            <div>
-              <h4 className="font-semibold text-lg mb-2 text-primary">Educación Ambiental</h4>
-              <p className="text-muted-foreground text-sm">Fomentamos la conciencia sobre el estrés hídrico y el cambio climático en los territorios.</p>
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold">3</div>
+              <h4 className="font-bold text-lg text-foreground">Educación e Incidencia</h4>
+              <p className="text-sm text-muted-foreground leading-relaxed">Fomentamos la toma de decisiones basada en evidencia científica para adaptar la gestión del agua al cambio climático en las cuencas del territorio nacional.</p>
             </div>
           </div>
         </div>

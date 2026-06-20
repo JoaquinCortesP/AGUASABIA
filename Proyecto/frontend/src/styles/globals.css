@@ -4,48 +4,48 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 175 84% 32%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 38 92% 50%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 214 32% 92%;
-    --muted-foreground: 215 16% 38%;
-    --accent: 174 54% 91%;
-    --accent-foreground: 173 82% 22%;
+    --background: 60 15% 95%;
+    --foreground: 120 30% 12%;
+    --card: 60 15% 98%;
+    --card-foreground: 120 30% 12%;
+    --popover: 60 15% 98%;
+    --popover-foreground: 120 30% 12%;
+    --primary: 40 55% 42%;
+    --primary-foreground: 60 20% 98%;
+    --secondary: 153 30% 28%;
+    --secondary-foreground: 60 20% 98%;
+    --muted: 120 10% 88%;
+    --muted-foreground: 120 10% 40%;
+    --accent: 40 40% 90%;
+    --accent-foreground: 40 55% 30%;
     --destructive: 0 72% 47%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 86%;
-    --input: 214 32% 86%;
-    --ring: 188 75% 38%;
-    --radius: 0.5rem;
+    --border: 120 10% 82%;
+    --input: 120 10% 82%;
+    --ring: 40 55% 42%;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 96%;
-    --card: 222 42% 10%;
-    --card-foreground: 210 40% 96%;
-    --popover: 222 42% 10%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 175 70% 50%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 38 92% 50%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 70%;
-    --accent: 174 60% 18%;
-    --accent-foreground: 174 76% 82%;
+    --background: 180 24% 6%;
+    --foreground: 60 15% 92%;
+    --card: 180 20% 9%;
+    --card-foreground: 60 15% 92%;
+    --popover: 180 20% 9%;
+    --popover-foreground: 60 15% 92%;
+    --primary: 40 68% 60%;
+    --primary-foreground: 180 24% 6%;
+    --secondary: 153 45% 35%;
+    --secondary-foreground: 60 15% 92%;
+    --muted: 180 15% 12%;
+    --muted-foreground: 120 10% 65%;
+    --accent: 40 40% 16%;
+    --accent-foreground: 40 68% 70%;
     --destructive: 0 72% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 217 33% 22%;
-    --input: 217 33% 22%;
-    --ring: 188 85% 48%;
+    --border: 180 15% 16%;
+    --input: 180 15% 16%;
+    --ring: 40 68% 60%;
   }
 
   * {
@@ -91,5 +91,52 @@
 
   .leaflet-popup-content {
     @apply text-sm;
+  }
+
+  /* Clases de Estilo Premium Forest & Gold */
+  .glass-panel {
+    @apply backdrop-blur-md bg-card/75 border border-border/50 shadow-lg;
+  }
+
+  .gold-glow-border {
+    @apply border border-primary/20 hover:border-primary/50 transition-all duration-300 shadow-[0_0_15px_rgba(223,186,107,0.02)] hover:shadow-[0_0_20px_rgba(223,186,107,0.08)];
+  }
+
+  .btn-premium {
+    @apply bg-gradient-to-r from-primary to-amber-500 hover:from-primary/95 hover:to-amber-500/95 text-primary-foreground font-semibold px-6 py-3 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .text-brand-gradient {
+    @apply bg-gradient-to-r from-primary via-amber-400 to-emerald-400 bg-clip-text text-transparent;
+  }
+
+  /* Range input customization */
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: hsl(40, 68%, 60%) !important; /* gold */
+    border: 2px solid hsl(180, 20%, 9%) !important;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+    background-color: hsl(40, 75%, 65%) !important;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: hsl(40, 68%, 60%) !important;
+    border: 2px solid hsl(180, 20%, 9%) !important;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+  input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.25);
+    background-color: hsl(40, 75%, 65%) !important;
   }
 }

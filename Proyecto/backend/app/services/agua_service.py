@@ -34,17 +34,25 @@ def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: 
     decretos_intersectados = []
     
     if db and wkt_polygon and avanzado_habilitado:
-        # Consulta de Cuencas intersectadas
-        cuencas = db.query(Cuenca.nombre).filter(
-            func.ST_Intersects(Cuenca.geometria, func.ST_GeometryFromText(f"SRID=4326;{wkt_polygon}"))
-        ).all()
-        cuencas_intersectadas = [c[0] for c in cuencas]
-        
-        # Consulta de Decretos de Escasez intersectados
-        decretos = db.query(DecretoEscasez.numero_decreto).filter(
-            func.ST_Intersects(DecretoEscasez.geometria, func.ST_GeometryFromText(f"SRID=4326;{wkt_polygon}"))
-        ).all()
-        decretos_intersectados = [d[0] for d in decretos]
+        try:
+            # Consulta de Cuencas intersectadas
+            cuencas = db.query(Cuenca.nombre).filter(
+                func.ST_Intersects(Cuenca.geometria, func.ST_GeometryFromText(f"SRID=4326;{wkt_polygon}"))
+            ).all()
+            cuencas_intersectadas = [c[0] for c in cuencas]
+        except Exception as e:
+            print(f"Error PostGIS en ST_Intersects (Cuencas): {e}")
+            cuencas_intersectadas = []
+            
+        try:
+            # Consulta de Decretos de Escasez intersectados
+            decretos = db.query(DecretoEscasez.numero_decreto).filter(
+                func.ST_Intersects(DecretoEscasez.geometria, func.ST_GeometryFromText(f"SRID=4326;{wkt_polygon}"))
+            ).all()
+            decretos_intersectados = [d[0] for d in decretos]
+        except Exception as e:
+            print(f"Error PostGIS en ST_Intersects (Decretos): {e}")
+            decretos_intersectados = []
 
         avanzado = {
             "et0_mm": et0,

@@ -17,3 +17,4 @@ class AreaAnalizada(BaseModel):
     centroide: Coordenada
     bbox: BBox
     superficie_aprox_ha: float | None = None
+    poligono: list[Coordenada] | None = None

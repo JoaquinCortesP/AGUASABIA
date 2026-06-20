@@ -23,5 +23,10 @@ export const territorioApi = {
 
   eliminarConsulta: async (id: number): Promise<void> => {
     await api.delete(`/api/v1/territorio/consultas/${id}`);
+  },
+
+  getEstaciones: async (limit: number = 5000): Promise<any> => {
+    const response = await api.get<any>(`/api/v1/dga-ingest/ingest/estaciones?limit=${limit}`);
+    return response.data;
   }
 };

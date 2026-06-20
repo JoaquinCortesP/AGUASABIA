@@ -12,6 +12,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function parseJwt(token: string) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,8 +41,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const profile = await authApi.getProfile();
-      setUser(profile);
+      const claims = parseJwt(token);
+      if (claims && claims.role === "admin") {
+        const adminData = await authApi.getAdminProfile();
+        setUser({
+          id: adminData.id,
+          nombre: adminData.nombre || "Administrador",
+          email: adminData.email,
+          plan: "premium", // Admins have unlimited/premium capabilities
+          is_active: adminData.is_active,
+          created_at: new Date().toISOString(),
+          role: "admin"
+        });
+      } else {
+        const profile = await authApi.getProfile();
+        setUser({
+          ...profile,
+          role: "usuario"
+        });
+      }
     } catch (error) {
       console.error("Failed to load profile", error);
       localStorage.removeItem("token");
@@ -33,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadUser();
