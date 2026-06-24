@@ -79,7 +79,7 @@ async def analizar_area(
         if current_usuario is None:
             raise HTTPException(status_code=401, detail="Debe iniciar sesion para usar el modo avanzado")
         if current_usuario.plan != "pago" and getattr(current_usuario, "role", None) != "admin":
-            raise HTTPException(status_code=403, detail="Mejora tu plan a 'Pago' para acceder a opciones avanzadas")
+            raise HTTPException(status_code=403, detail="Mejora tu plan a 'Pago' por solo $5.000 CLP mensuales para acceder a opciones avanzadas y análisis satelital.")
     try:
         return await analizar_consulta_territorial(
             db=db,

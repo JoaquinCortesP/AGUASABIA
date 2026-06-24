@@ -13,7 +13,7 @@ from app.models.comuna import Comuna
 from app.models.parcela import Parcela
 from app.schemas.clima import RecomendacionRiego
 from app.schemas.parcela import Parcela as ParcelaSchema, ParcelaCreate
-from app.services.agronomy import calcular_recomendacion_riego
+
 from app.services.clima_service import (
     ClimaServiceError,
     ClimaServiceUnavailable,
@@ -116,71 +116,3 @@ def read_parcela(
     return _get_parcela_municipal(db, parcela_id, current_admin)
 
 
-@router.post("/{parcela_id}/recomendacion-riego", response_model=RecomendacionRiego)
-async def create_recomendacion_riego(
-    parcela_id: int,
-    db: Session = Depends(deps.get_db),
-    current_admin: Administrador = Depends(deps.get_current_admin),
-) -> Any:
-    parcela = _get_parcela_municipal(db, parcela_id, current_admin)
-    if parcela.latitud is None or parcela.longitud is None:
-        raise HTTPException(status_code=422, detail="La parcela no tiene centroide definido")
-
-    try:
-        clima = await obtener_clima_diario(parcela.latitud, parcela.longitud)
-    except ClimaServiceError as exc:
-        raise _map_clima_error(exc)
-
-    balance_anterior = (
-        db.query(BalanceHidrico)
-        .filter(
-            BalanceHidrico.parcela_id == parcela.id,
-            BalanceHidrico.fecha < clima["fecha"],
-        )
-        .order_by(BalanceHidrico.fecha.desc())
-        .first()
-    )
-    dr_ayer = balance_anterior.deficit_hidrico if balance_anterior and balance_anterior.deficit_hidrico else 0
-
-    recomendacion = calcular_recomendacion_riego(
-        et0_mm=clima["et0_mm"],
-        precipitacion_mm=clima["precipitacion_mm"],
-        tipo_cultivo=parcela.tipo_cultivo,
-        superficie_ha=parcela.superficie,
-        dr_ayer_mm=dr_ayer,
-    )
-
-    balance = (
-        db.query(BalanceHidrico)
-        .filter(BalanceHidrico.parcela_id == parcela.id, BalanceHidrico.fecha == clima["fecha"])
-        .first()
-    )
-    if not balance:
-        balance = BalanceHidrico(parcela_id=parcela.id, fecha=clima["fecha"])
-        db.add(balance)
-
-    balance.et0 = clima["et0_mm"]
-    balance.etc = recomendacion["etc_mm"]
-    balance.evapotranspiracion = recomendacion["etc_mm"]
-    balance.precipitacion = clima["precipitacion_mm"]
-    balance.riego_sugerido = recomendacion["riego_sugerido_mm"]
-    balance.riego_sugerido_mm = recomendacion["riego_sugerido_mm"]
-    balance.litros_recomendados = recomendacion["litros_recomendados"]
-    balance.deficit_hidrico = recomendacion["deficit_hidrico_mm"]
-    balance.raw = recomendacion["raw_mm"]
-    balance.taw = recomendacion["taw_mm"]
-    balance.estado_hidrico = recomendacion["estado_hidrico"]
-
-    db.commit()
-    db.refresh(balance)
-
-    return {
-        "parcela_id": parcela.id,
-        "fecha": clima["fecha"],
-        "latitud": parcela.latitud,
-        "longitud": parcela.longitud,
-        "et0_mm": clima["et0_mm"],
-        "precipitacion_mm": clima["precipitacion_mm"],
-        **recomendacion,
-        "balance_id": balance.id,
-    }

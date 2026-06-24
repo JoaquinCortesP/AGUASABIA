@@ -23,7 +23,7 @@ from app.services.vegetacion_service import evaluar_modulo_vegetacion
 
 
 PLANES_CON_MODO_AVANZADO = {"pago", "premium", "profesional", "institucional", "avanzado"}
-VISITOR_DAILY_LIMIT = 3
+VISITOR_DAILY_LIMIT = 10
 
 
 class VisitorDailyLimitExceeded(Exception):
