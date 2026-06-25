@@ -11,6 +11,9 @@ call .\.venv\Scripts\activate
 echo Ejecutando migraciones pendientes de base de datos...
 alembic upgrade head
 
+echo Inicializando datos de prueba y administrador...
+python scripts\seed.py
+
 echo Sincronizando capas oficiales (DGA/MOP)...
 python scripts\sync_capas_oficiales.py
 

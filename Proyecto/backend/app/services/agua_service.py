@@ -1,7 +1,7 @@
 from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models.capas_ambientales import Cuenca, DecretoEscasez, AcuiferoProtegido, AreaRestriccionProhibicion, DeclaracionAgotamiento, DecretoCaudalReserva, EstacionHidrometrica
+from app.models.capas_ambientales import Cuenca, DecretoEscasez, AcuiferoProtegido, AreaRestriccionProhibicion, DeclaracionAgotamiento, DecretoCaudalReserva, EstacionHidrometrica, FuenteHidrica
 
 def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: str = None, avanzado_habilitado: bool = False) -> dict[str, Any]:
     precipitacion = float(clima.get("precipitacion_mm") or 0)
@@ -37,7 +37,23 @@ def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: 
     declaraciones_agotamiento = []
     decretos_reserva = []
     embalses_cercanos = []
+    rios_intersectados = []
     
+    if db and wkt_polygon:
+        try:
+            geom = func.ST_MakeValid(func.ST_GeometryFromText(f"SRID=4326;{wkt_polygon}"))
+            fuentes = db.query(FuenteHidrica.nombre, FuenteHidrica.tipo).filter(
+                func.ST_Intersects(FuenteHidrica.geometria, geom)
+            ).all()
+            for f_nom, f_tipo in fuentes:
+                if f_nom:
+                    tipo_low = (f_tipo or "").lower()
+                    if any(x in tipo_low for x in ["rio", "río", "estero", "quebrada", "canal"]):
+                        if f_nom not in rios_intersectados:
+                            rios_intersectados.append(f_nom)
+        except Exception as e:
+            print(f"Error al buscar interseccion de rios: {e}")
+
     if db and wkt_polygon and avanzado_habilitado:
         try:
             # Consulta de Cuencas intersectadas
@@ -94,6 +110,7 @@ def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: 
             "declaraciones_agotamiento": declaraciones_agotamiento,
             "decretos_reserva": decretos_reserva,
             "embalses_cercanos": embalses_cercanos,
+            "rios_intersectados": rios_intersectados,
             "interpretacion_tecnica": (
                 "Se ha realizado un cruce espacial con multiples capas de la DGA. "
                 "Los resultados muestran las cuencas, decretos, y zonas protegidas que intersectan con el polígono consultado."
@@ -107,6 +124,8 @@ def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: 
         "datos": {
             "precipitacion_diaria_mm": precipitacion,
             "demanda_atmosferica_et0_mm": et0,
+            "atraviesa_rio": len(rios_intersectados) > 0,
+            "rios_intersectados_nombres": rios_intersectados,
         },
         "fuentes": [
             {

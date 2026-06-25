@@ -24,7 +24,7 @@ export function HomePage() {
               to="/mapa" 
               className="w-full sm:w-auto bg-gradient-to-r from-primary to-amber-500 hover:from-primary/95 hover:to-amber-500/95 text-primary-foreground font-semibold px-8 py-4 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
             >
-              Comenzar Análisis Predial
+              Comenzar Análisis
             </Link>
             <Link 
               to="/aprender" 

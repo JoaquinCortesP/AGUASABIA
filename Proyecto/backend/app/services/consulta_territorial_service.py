@@ -20,9 +20,10 @@ from geoalchemy2.elements import WKTElement
 from app.services.riesgos_service import evaluar_modulo_riesgos
 from app.services.territorio_service import evaluar_modulo_territorio
 from app.services.vegetacion_service import evaluar_modulo_vegetacion
+from app.services.suelo_service import evaluar_modulo_suelo
 
 
-PLANES_CON_MODO_AVANZADO = {"pago", "premium", "profesional", "institucional", "avanzado"}
+PLANES_CON_MODO_AVANZADO = {"pago", "premium", "profesional", "institucional", "avanzado", "pro", "municipal"}
 VISITOR_DAILY_LIMIT = 10
 
 
@@ -158,10 +159,11 @@ async def analizar_consulta_territorial(
     if "agua" in payload.modulos:
         modulos["agua"] = evaluar_modulo_agua(clima, db, wkt_polygon, avanzado_habilitado)
     if "territorio" in payload.modulos:
-        modulos["territorio"] = evaluar_modulo_territorio(
+        modulos["territorio"] = await evaluar_modulo_territorio(
             centroide=centroide,
             bbox=bbox,
             superficie_aprox_ha=superficie_aprox_ha,
+            wkt_polygon=wkt_polygon,
             avanzado_habilitado=avanzado_habilitado,
         )
     ndvi_promedio = None
@@ -172,6 +174,9 @@ async def analizar_consulta_territorial(
             
     if "riesgos" in payload.modulos:
         modulos["riesgos"] = evaluar_modulo_riesgos(clima, ndvi_promedio, avanzado_habilitado)
+
+    if "suelo" in payload.modulos:
+        modulos["suelo"] = await evaluar_modulo_suelo(centroide["latitud"], centroide["longitud"], avanzado_habilitado)
 
     modulos = {
         nombre: _serializar_modulo(modulo, avanzado_habilitado)

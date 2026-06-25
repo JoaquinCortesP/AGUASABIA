@@ -160,15 +160,15 @@ async def run_sync():
             db.commit()
 
             # 5. Decretos Escasez
-            features = await fetch_layer_data(client, 'DGA/Decretos_Escasez_Hidrica', 'OBJECTID,NUM_DECRETO,REGION,FECHA_INICIO,FECHA_FIN')
+            features = await fetch_layer_data(client, 'DGA/Decretos_Escasez_Hidrica', 'OBJECTID,NUM_DECRETO,REGION,FECHA_DECRETO,FECHA_CADUCIDAD')
             for f in features:
                 attrs = f.get("attributes", {})
                 geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
                 if geom:
                     from datetime import datetime
                     
-                    f_ini = attrs.get("FECHA_INICIO")
-                    f_fin = attrs.get("FECHA_FIN")
+                    f_ini = attrs.get("FECHA_DECRETO")
+                    f_fin = attrs.get("FECHA_CADUCIDAD")
                     dt_ini = datetime.utcfromtimestamp(f_ini/1000).date() if f_ini else datetime.now().date()
                     dt_fin = datetime.utcfromtimestamp(f_fin/1000).date() if f_fin else datetime.now().date()
                     

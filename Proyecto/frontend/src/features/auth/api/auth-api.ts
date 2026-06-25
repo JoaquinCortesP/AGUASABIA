@@ -34,8 +34,8 @@ export const authApi = {
     return response.data;
   },
 
-  verifyEmail: async (email: string): Promise<{ msg: string }> => {
-    const response = await api.post<{ msg: string }>(`/api/v1/usuarios/verify-email?email=${encodeURIComponent(email)}`);
+  verifyEmail: async (email: string, code: string): Promise<{ msg: string }> => {
+    const response = await api.post<{ msg: string }>(`/api/v1/usuarios/verify-email?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`);
     return response.data;
   },
 
@@ -46,6 +46,11 @@ export const authApi = {
 
   getAdminProfile: async (): Promise<any> => {
     const response = await api.get<any>("/api/v1/admin/me");
+    return response.data;
+  },
+
+  changePlan: async (plan: string): Promise<{ msg: string; plan: string }> => {
+    const response = await api.post<{ msg: string; plan: string }>(`/api/v1/usuarios/change-plan?plan=${encodeURIComponent(plan)}`);
     return response.data;
   },
 };

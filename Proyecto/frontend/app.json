@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "AguaSabia",
+    "slug": "aguasabia-frontend",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": null,
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0c1e12"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0c1e12"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

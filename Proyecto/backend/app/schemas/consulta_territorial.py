@@ -7,7 +7,7 @@ from app.schemas.geometria import AreaAnalizada, Coordenada
 from app.schemas.modulo_analisis import ModuloAnalisis
 
 
-ModuloSolicitado = Literal["agua", "clima", "territorio", "vegetacion", "riesgos"]
+ModuloSolicitado = Literal["agua", "clima", "territorio", "vegetacion", "riesgos", "suelo"]
 ModoConsulta = Literal["resumen", "avanzado"]
 
 
@@ -19,7 +19,7 @@ class ConsultaTerritorialRequest(BaseModel):
     nombre: str | None = None
     cliente_anonimo_id: str | None = Field(default=None, max_length=128)
     modulos: list[ModuloSolicitado] = Field(
-        default_factory=lambda: ["agua", "clima", "territorio", "vegetacion", "riesgos"]
+        default_factory=lambda: ["agua", "clima", "territorio", "vegetacion", "riesgos", "suelo"]
     )
 
     @model_validator(mode="after")

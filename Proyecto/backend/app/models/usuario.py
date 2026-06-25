@@ -14,6 +14,7 @@ class Usuario(Base):
     plan = Column(String, default="gratis", nullable=False)
     is_active = Column(Boolean(), default=True, nullable=False)
     is_verified = Column(Boolean(), default=False, nullable=False)
+    verification_code = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     consultas = relationship("ConsultaTerritorial", back_populates="usuario")

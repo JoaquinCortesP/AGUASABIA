@@ -1,7 +1,7 @@
 export type Role = "visitante" | "usuario" | "premium" | "admin";
 export type Plan = "gratis" | "premium" | "profesional" | "institucional";
 export type AnalysisMode = "resumen" | "avanzado";
-export type ModuleName = "agua" | "clima" | "territorio" | "vegetacion" | "riesgos";
+export type ModuleName = "agua" | "clima" | "territorio" | "vegetacion" | "riesgos" | "suelo";
 export type ModuleStatus =
   | "normal"
   | "moderado"
@@ -67,6 +67,8 @@ export interface TerritoryAnalysisResponse {
   area: AnalyzedArea;
   resumen_general: string;
   modulos: Partial<Record<ModuleName, AnalysisModule>>;
+  edificado?: boolean | null;
+  edificado_mensaje?: string | null;
 }
 
 export interface HistoryItem {

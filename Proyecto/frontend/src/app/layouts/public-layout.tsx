@@ -13,7 +13,7 @@ export function PublicLayout() {
           <nav className="flex gap-4 items-center">
             <ThemeToggle />
             {isAuthenticated ? (
-              <Link to="/mapa" className="text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]">Ir a la App</Link>
+              <Link to="/mapa" className="text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]">Comenzar Análisis</Link>
             ) : (
               <div className="flex items-center gap-2">
                 <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-2 transition-colors">Iniciar Sesión</Link>

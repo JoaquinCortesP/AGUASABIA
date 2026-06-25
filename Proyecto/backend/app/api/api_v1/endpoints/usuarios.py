@@ -24,20 +24,26 @@ def register_usuario(
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un usuario con ese email")
 
+    import random
+    verification_code = f"{random.randint(100000, 999999)}"
+    
     usuario = Usuario(
         nombre=usuario_in.nombre,
         email=usuario_in.email,
         hashed_password=security.get_password_hash(usuario_in.password),
         plan="gratis",
         is_active=True,
-        is_verified=False, # TODO: Send verification email
+        is_verified=False,
+        verification_code=verification_code,
     )
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
     
-    # Placeholder for email sending service (e.g., SendGrid/Resend)
-    print(f"ENVIANDO EMAIL DE VERIFICACION A: {usuario.email}")
+    # Imprimir código en consola
+    print("\n" + "="*80)
+    print(f">>> CODIGO DE VERIFICACION PARA ({usuario.email}): {verification_code} <<<")
+    print("="*80 + "\n")
     
     return usuario
 
@@ -80,13 +86,30 @@ def read_usuario_me(
 @router.post("/verify-email")
 def verify_email(
     email: str,
+    code: str,
     db: Session = Depends(deps.get_db),
 ) -> Any:
-    # This is a placeholder endpoint. In a real app, it would take a token, not an email directly.
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
+    if usuario.verification_code != code:
+        raise HTTPException(status_code=400, detail="Codigo de verificacion incorrecto")
+    
     usuario.is_verified = True
+    usuario.verification_code = None
     db.commit()
     return {"msg": "Correo verificado exitosamente"}
+
+
+@router.post("/change-plan")
+def change_plan(
+    plan: str,
+    db: Session = Depends(deps.get_db),
+    current_usuario: Usuario = Depends(deps.get_current_usuario),
+) -> Any:
+    if plan not in ["gratis", "pro", "municipal"]:
+        raise HTTPException(status_code=400, detail="Plan no valido")
+    current_usuario.plan = plan
+    db.commit()
+    return {"msg": f"Plan actualizado a {plan} exitosamente", "plan": plan}
