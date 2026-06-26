@@ -23,10 +23,11 @@ export function MapPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [placingShape, setPlacingShape] = useState<"square" | "rectangle" | "triangle" | null>(null);
   const [activeConcept, setActiveConcept] = useState<string | null>(null);
+  const [fechaHistorica, setFechaHistorica] = useState<string>("");
   
   // VS Code / Visual Studio panel folding style
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(typeof window !== "undefined" ? window.innerWidth > 768 : true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(typeof window !== "undefined" ? window.innerWidth > 768 : true);
 
   // Address search states
   const [addressSearch, setAddressSearch] = useState("");
@@ -88,7 +89,7 @@ export function MapPage() {
   // Nivel de usuario
   const isGuest = user === null;
   const isRegisteredFree = user !== null && user.plan !== "pago" && user.plan !== "pro" && user.plan !== "municipal" && user.role !== "admin";
-  const isPremiumPro = user !== null && (user.plan === "pago" || user.plan === "pro" || user.plan === "municipal" || user.role === "admin");
+  const isPremiumPro = user !== null && (["pago", "pro", "premium", "municipal"].includes(user.plan?.toLowerCase() || "") || user.role === "admin");
 
   const concepts: Record<string, { title: string; desc: string }> = {
     clima: {
@@ -124,9 +125,11 @@ export function MapPage() {
         modo: isPremiumPro ? "avanzado" : "resumen", // Determinado automáticamente
         guardar: !!user,
         modulos: ["agua", "clima", "territorio", "vegetacion", "riesgos", "suelo"],
+        fecha_historica: fechaHistorica || undefined,
       }),
     onSuccess: (data) => {
       setAnalysisResult(data);
+      setRightPanelOpen(true);
     },
     onError: (error: any) => {
       if (error.response?.status === 403) {
@@ -268,23 +271,61 @@ export function MapPage() {
   };
 
   const handleExportExcel = async () => {
-    if (!analysisResult || !analysisResult.modulos) return;
+    if (!analysisResult) return;
     try {
       setIsExportingExcel(true);
-      const response = await api.post("/api/v1/territorio/consultas/exportar-excel", analysisResult, {
-        responseType: "blob",
-      });
-      const blob = new Blob([response.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `Reporte_Pro_AguaSabia_${analysisResult.area?.superficie_aprox_ha || 0}ha.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      
+      const { utils, write, writeFile } = await import("xlsx");
+      
+      const wb = utils.book_new();
+      
+      // Resumen Sheet
+      const resumenData = [
+        ["Reporte Territorial AguaSabia (Modo Pro)"],
+        [],
+        ["ID Consulta", analysisResult.consulta_id || "No Guardado"],
+        ["Fecha", new Date().toLocaleString()],
+        ["Superficie (ha)", analysisResult.area?.superficie_aprox_ha || "N/A"],
+        ["Coordenadas (Centroide)", `Lat: ${analysisResult.area?.centroide?.latitud}, Lon: ${analysisResult.area?.centroide?.longitud}`],
+        ["Edificado", analysisResult.modulos?.territorio?.datos?.edificado ? "Sí" : "No"],
+        ["Cruza Río", analysisResult.modulos?.territorio?.datos?.atraviesa_rio ? "Sí" : "No"]
+      ];
+      
+      const wsResumen = utils.aoa_to_sheet(resumenData);
+      utils.book_append_sheet(wb, wsResumen, "Resumen");
+      
+      // Módulos Sheet
+      const modulosData = [
+        ["Módulo", "Dato", "Valor"]
+      ];
+      
+      if (analysisResult.modulos?.suelo?.datos) {
+        modulosData.push(["Suelo", "Textura", analysisResult.modulos.suelo.datos.textura || "N/A"]);
+        modulosData.push(["Suelo", "pH", analysisResult.modulos.suelo.datos.ph_suelo || "N/A"]);
+      }
+      if (analysisResult.modulos?.clima?.datos) {
+        modulosData.push(["Clima", "ET0 Anual (mm)", analysisResult.modulos.clima.datos.et0_anual || "N/A"]);
+        modulosData.push(["Clima", "Temp Promedio (°C)", analysisResult.modulos.clima.datos.temp_promedio || "N/A"]);
+      }
+      
+      const wsModulos = utils.aoa_to_sheet(modulosData);
+      utils.book_append_sheet(wb, wsModulos, "Detalles Módulos");
+
+      const filename = `Reporte_Pro_AguaSabia_${analysisResult.area?.superficie_aprox_ha || 0}ha.xlsx`;
+      const rw = (window as any).ReactNativeWebView;
+
+      if (rw) {
+        // Send Base64 to Expo App
+        const base64 = write(wb, { type: "base64", bookType: "xlsx" });
+        rw.postMessage(JSON.stringify({
+          type: "download_excel",
+          filename,
+          data: base64
+        }));
+      } else {
+        // Normal Browser Download
+        writeFile(wb, filename);
+      }
     } catch (err: any) {
       console.error("Error al exportar Excel:", err);
       alert("Hubo un error al generar el archivo Excel Pro. Intenta nuevamente.");
@@ -622,6 +663,13 @@ export function MapPage() {
               </div>
             )}
 
+            {datos.atraviesa_rio && (
+              <div className="bg-cyan-500/10 border border-cyan-500/35 p-2.5 rounded-lg text-cyan-700 dark:text-cyan-400 text-[10px] font-bold mt-2 flex items-start gap-1.5">
+                <span className="text-sm shrink-0">🌊</span>
+                <span>El polígono intersecta con un río o cauce superficial.</span>
+              </div>
+            )}
+
             {isPremiumPro && modulo.avanzado && (
               <div className="bg-primary/5 border border-primary/15 p-2.5 rounded-lg text-xs leading-relaxed text-muted-foreground space-y-2">
                 <div>
@@ -653,15 +701,32 @@ export function MapPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-background/60 p-2.5 rounded-lg border border-border/50">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-semibold">NDVI Promedio</span>
-                <span className="text-base font-bold text-emerald-500 flex items-center gap-1 mt-1">
-                  🌿 {datos.ndvi_promedio ?? 0.45}
-                </span>
+                <div className="relative group inline-block mt-1">
+                  <span className="text-base font-bold text-emerald-500 flex items-center gap-1 cursor-help border-b border-dashed border-emerald-500/50 pb-0.5">
+                    🌿 {datos.ndvi_promedio ?? 0.45}
+                  </span>
+                  <div className="absolute left-0 bottom-full mb-1.5 hidden group-hover:block w-64 p-3 bg-slate-800 text-white text-[11px] rounded-md shadow-lg z-50 normal-case font-normal leading-tight">
+                    <p className="mb-1 font-bold text-emerald-400">Índice de Diferencia Normalizada de Vegetación</p>
+                    {Number(datos.ndvi_promedio ?? 0.45) < 0.2 
+                      ? "Valor muy bajo (0.0 - 0.2): Suelo desnudo, rocas, nieve o áreas muy secas sin vegetación." 
+                      : Number(datos.ndvi_promedio ?? 0.45) < 0.5 
+                        ? "Valor medio (0.2 - 0.5): Vegetación escasa, matorrales, pastizales secos o cultivos en etapa temprana."
+                        : "Valor alto (0.5 - 1.0): Vegetación densa, bosques frondosos o cultivos muy saludables."}
+                    <div className="absolute left-4 top-full w-0 h-0 border-t-[6px] border-t-slate-800 border-x-[6px] border-x-transparent" />
+                  </div>
+                </div>
               </div>
               <div className="bg-background/60 p-2.5 rounded-lg border border-border/50">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-semibold">Vigor Vegetal</span>
-                <span className="text-sm font-semibold text-foreground mt-1.5 block">
-                  {datos.cobertura_vegetal ?? "Media"}
-                </span>
+                <div className="relative group inline-block mt-1">
+                  <span className="text-sm font-semibold text-foreground flex items-center gap-1 cursor-help border-b border-dashed border-border pb-0.5">
+                    {datos.cobertura_vegetal ?? "Media"}
+                  </span>
+                  <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover:block w-48 p-2.5 bg-slate-800 text-white text-[11px] rounded-md shadow-lg z-50 normal-case font-normal leading-tight">
+                    Interpretación cualitativa de la densidad y actividad fotosintética (salud) de las plantas en el terreno.
+                    <div className="absolute right-4 top-full w-0 h-0 border-t-[6px] border-t-slate-800 border-x-[6px] border-x-transparent" />
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -733,20 +798,52 @@ export function MapPage() {
       case "suelo": {
         const { textura, ph_suelo } = datos;
         
+        const TEXTURE_DESCRIPTIONS: Record<string, string> = {
+          "Arenosa": "Suelo ligero, retiene poca agua y nutrientes. Alto drenaje.",
+          "Areno-Franca": "Suelo ligero con algo más de limo/arcilla. Drenaje rápido.",
+          "Franco-Arenosa": "Equilibrado pero tendiendo a arenoso. Buen drenaje.",
+          "Franco": "Textura ideal agrícola. Equilibrio perfecto entre retención y drenaje.",
+          "Franco-Limosa": "Equilibrado, suave y retiene bien el agua y nutrientes.",
+          "Limosa": "Partículas finas, retiene mucha agua, susceptible a compactación.",
+          "Franco-Arcillosa": "Retiene bastante humedad y nutrientes, pero puede presentar mal drenaje.",
+          "Franco-Arcillo-Arenosa": "Mezcla pesada con algo de arena. Difícil de trabajar en mojado.",
+          "Franco-Arcillo-Limosa": "Mezcla pesada con limo. Muy retentivo de humedad.",
+          "Arcillo-Arenosa": "Suelo pesado y pegajoso, mal drenaje pero retiene nutrientes.",
+          "Arcillo-Limosa": "Suelo muy pesado, retiene mucha agua, lento drenaje.",
+          "Arcillosa": "Suelo muy pesado, drena muy lento y se agrieta al secarse."
+        };
+        const tooltipDesc = TEXTURE_DESCRIPTIONS[textura ?? "Franco"] || "Clasificación de textura edafológica.";
+
         return (
           <div className="space-y-3 mt-2">
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-background/60 p-2.5 rounded-lg border border-border/50">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-semibold">Textura</span>
-                <span className="text-sm font-bold text-amber-600 dark:text-amber-500 flex items-center gap-1 mt-1">
-                  🪵 {textura ?? "Franco"}
-                </span>
+                <div className="relative group inline-block mt-1">
+                  <span className="text-sm font-bold text-amber-600 dark:text-amber-500 flex items-center gap-1 cursor-help border-b border-dashed border-amber-600/50 pb-0.5">
+                    🪵 {textura ?? "Franco"}
+                  </span>
+                  <div className="absolute left-0 bottom-full mb-1.5 hidden group-hover:block w-48 p-2.5 bg-slate-800 text-white text-[11px] rounded-md shadow-lg z-50 normal-case font-normal leading-tight">
+                    {tooltipDesc}
+                    <div className="absolute left-4 top-full w-0 h-0 border-t-[6px] border-t-slate-800 border-x-[6px] border-x-transparent" />
+                  </div>
+                </div>
               </div>
               <div className="bg-background/60 p-2.5 rounded-lg border border-border/50">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-semibold">pH del Suelo</span>
-                <span className="text-base font-bold text-emerald-500 flex items-center gap-1 mt-1">
-                  🧪 {ph_suelo ?? "6.5"}
-                </span>
+                <div className="relative group inline-block mt-1">
+                  <span className="text-base font-bold text-emerald-500 flex items-center gap-1 cursor-help border-b border-dashed border-emerald-500/50 pb-0.5">
+                    🧪 {ph_suelo ?? "6.5"}
+                  </span>
+                  <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover:block w-56 p-2.5 bg-slate-800 text-white text-[11px] rounded-md shadow-lg z-50 normal-case font-normal leading-tight">
+                    {Number(ph_suelo ?? 6.5) < 5.5 
+                      ? "Suelo Ácido: Puede limitar la disponibilidad de nutrientes como fósforo y requerir encalado." 
+                      : Number(ph_suelo ?? 6.5) > 7.5 
+                        ? "Suelo Alcalino: Puede presentar deficiencia de micronutrientes (hierro, zinc) por insolubilidad."
+                        : "Suelo Neutro/Óptimo: Máxima disponibilidad de la mayoría de los nutrientes esenciales para las plantas."}
+                    <div className="absolute right-4 top-full w-0 h-0 border-t-[6px] border-t-slate-800 border-x-[6px] border-x-transparent" />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -868,7 +965,7 @@ export function MapPage() {
             className="absolute top-4 right-4 text-xs font-bold text-muted-foreground hover:text-foreground border border-border/50 p-1.5 rounded bg-muted/40 transition active:scale-[0.97]"
             title="Ocultar herramientas"
           >
-            ◀
+            <X className="w-4 h-4" />
           </button>
           
           <h2 className="font-extrabold text-xl text-brand-gradient tracking-tight border-b border-border/40 pb-2 flex items-center gap-2 pt-2">
@@ -1004,6 +1101,19 @@ export function MapPage() {
               >
                 Limpiar
               </button>
+            </div>
+
+            <div className="pt-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
+                Fecha de Análisis Histórico (Opcional)
+              </label>
+              <input 
+                type="date" 
+                value={fechaHistorica}
+                onChange={(e) => setFechaHistorica(e.target.value)}
+                className="w-full bg-background border border-border/60 text-foreground text-sm rounded-lg p-2.5 focus:ring-1 focus:ring-primary focus:border-primary transition"
+                max={new Date().toISOString().split("T")[0]}
+              />
             </div>
 
             <button 
@@ -1146,6 +1256,29 @@ export function MapPage() {
 
           {analysisResult && analysisResult.modulos && (
             <div className="space-y-5">
+              {(() => {
+                const centerLat = analysisResult.area?.centroide?.latitud;
+                const centerLng = analysisResult.area?.centroide?.longitud;
+                if (centerLat !== undefined && centerLng !== undefined) {
+                  // Rough mainland Chile bounds check
+                  const isMainlandChile = centerLat >= -56.0 && centerLat <= -17.0 && centerLng >= -76.0 && centerLng <= -66.0;
+                  if (!isMainlandChile) {
+                    return (
+                      <div className="bg-amber-500/10 border-l-4 border-amber-500 p-3 rounded-r-lg space-y-1 mb-2">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs">
+                          <span>⚠️</span>
+                          <span>Análisis fuera de territorio continental</span>
+                        </div>
+                        <p className="text-[10px] text-amber-600 dark:text-amber-500 leading-relaxed">
+                          El polígono seleccionado abarca zona marítima u otros países. Los cruces con capas oficiales (DGA, CONAF) y las predicciones agroclimáticas pueden no estar disponibles o presentar desviaciones.
+                        </p>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
+              
               {analysisResult.resumen_general && (
                 <div className="bg-muted/50 border border-border/40 p-4 rounded-xl space-y-2">
                   <h3 className="font-bold text-xs uppercase text-primary tracking-wider">Resumen General</h3>
@@ -1215,19 +1348,15 @@ export function MapPage() {
                 )
               ))}
 
-              {/* Botón Análisis Pro al final del reporte */}
-              <button 
-                onClick={() => {
-                  if (isPremiumPro) {
-                    setShowDashboard(true);
-                  } else {
-                    setShowPromoModal(true);
-                  }
-                }}
-                className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white py-3 rounded-lg font-bold shadow-md hover:scale-[1.01] active:scale-[0.99] transition text-xs flex items-center justify-center gap-1.5 mt-4"
-              >
-                ⭐ Análisis Pro
-              </button>
+              {/* Botón Análisis Pro al final del reporte para usuarios no pro */}
+              {!isPremiumPro && (
+                <button 
+                  onClick={() => setShowPromoModal(true)}
+                  className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white py-3 rounded-lg font-bold shadow-md hover:scale-[1.01] active:scale-[0.99] transition text-xs flex items-center justify-center gap-1.5 mt-4"
+                >
+                  ⭐ Análisis Pro
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1243,7 +1372,7 @@ export function MapPage() {
 
       {/* Modal Promocional */}
       {showPromoModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fade-in">
           <div className="bg-card border border-border rounded-xl shadow-2xl p-8 max-w-sm w-full text-center space-y-4">
             <span className="text-4xl">⭐</span>
             <h3 className="text-xl font-extrabold text-brand-gradient">Mejora tu Plan a Pro</h3>

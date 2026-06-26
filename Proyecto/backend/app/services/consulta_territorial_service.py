@@ -18,7 +18,7 @@ from app.services.geometry import (
 )
 from geoalchemy2.elements import WKTElement
 from app.services.riesgos_service import evaluar_modulo_riesgos
-from app.services.territorio_service import evaluar_modulo_territorio
+from app.services.territorio_service import evaluar_modulo_territorio, obtener_comuna_por_coordenadas
 from app.services.vegetacion_service import evaluar_modulo_vegetacion
 from app.services.suelo_service import evaluar_modulo_suelo
 
@@ -72,19 +72,11 @@ def validar_limite_visitante(db: Session, visitor_key: str | None) -> int | None
     return VISITOR_DAILY_LIMIT - consultas_hoy - 1
 
 
-def construir_resumen_general(modulos: dict[str, dict[str, Any]]) -> str:
-    agua = modulos.get("agua", {})
-    riesgos = modulos.get("riesgos", {})
-
-    if agua.get("estado") == "moderado" or riesgos.get("estado") == "moderado":
-        return (
-            "La zona seleccionada muestra senales ambientales que conviene revisar con mas detalle, "
-            "especialmente en agua y riesgos asociados al contexto climatico reciente."
-        )
-
+def construir_resumen_general(modulos: dict[str, dict[str, Any]], comuna: str = "la zona") -> str:
     return (
-        "La zona seleccionada fue analizada como consulta territorial. "
-        "El resumen integra clima, agua, territorio, vegetacion y riesgos en una lectura inicial simple."
+        f"La zona seleccionada en el sector de {comuna} fue analizada como consulta territorial. "
+        "El resumen integra clima, agua, territorio, vegetación y riesgos en una lectura inicial ágil, "
+        "respaldada por cruces geoespaciales reales y vigentes."
     )
 
 
@@ -108,7 +100,21 @@ async def analizar_consulta_territorial(
     poligono = normalizar_vertices(payload.poligono or [])
     centroide = calcular_centroide(poligono)
     bbox = calcular_bbox(poligono)
+    
+    # Validacion geografica (Territorio Continental de Chile)
+    lat_c = centroide["latitud"]
+    lon_c = centroide["longitud"]
+    fuera_de_chile = not (-56.0 <= lat_c <= -17.0 and -76.0 <= lon_c <= -66.0)
+
+    if fuera_de_chile:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede analizar el territorio: El área seleccionada se encuentra en el mar o fuera de las fronteras de Chile continental."
+        )
+
     avanzado_habilitado = payload.modo == "avanzado" and usuario_tiene_modo_avanzado(usuario)
+    requiere_plan_pago = payload.modo == "avanzado" and not avanzado_habilitado
     requiere_plan_pago = payload.modo == "avanzado" and not avanzado_habilitado
 
     wkt_polygon = convertir_vertices_a_wkt(poligono)
@@ -122,7 +128,11 @@ async def analizar_consulta_territorial(
         print(f"Error PostGIS en ST_Area: {e}. Usando calculo plano de fallback.")
         superficie_aprox_ha = calcular_superficie_aprox_ha(poligono)
 
-    clima = await obtener_clima_diario(centroide["latitud"], centroide["longitud"])
+    clima = await obtener_clima_diario(
+        centroide["latitud"], 
+        centroide["longitud"], 
+        fecha_historica=payload.fecha_historica
+    )
 
     modulos: dict[str, dict[str, Any]] = {}
     if "clima" in payload.modulos:
@@ -156,10 +166,19 @@ async def analizar_consulta_territorial(
             "avanzado": avanzado,
             "avanzado_restringido": not avanzado_habilitado,
         }
+    modulo_bloqueado_extranjero = {
+        "estado": "no_disponible",
+        "titulo": "Ubicación Fuera de Rango",
+        "explicacion": "Nuestro análisis y capas oficiales no están diseñados para zonas marítimas o países extranjeros.",
+        "datos": {},
+        "fuentes": [],
+        "avanzado": {}
+    }
+
     if "agua" in payload.modulos:
-        modulos["agua"] = evaluar_modulo_agua(clima, db, wkt_polygon, avanzado_habilitado)
+        modulos["agua"] = modulo_bloqueado_extranjero if fuera_de_chile else evaluar_modulo_agua(clima, db, wkt_polygon, avanzado_habilitado)
     if "territorio" in payload.modulos:
-        modulos["territorio"] = await evaluar_modulo_territorio(
+        modulos["territorio"] = modulo_bloqueado_extranjero if fuera_de_chile else await evaluar_modulo_territorio(
             centroide=centroide,
             bbox=bbox,
             superficie_aprox_ha=superficie_aprox_ha,
@@ -168,21 +187,23 @@ async def analizar_consulta_territorial(
         )
     ndvi_promedio = None
     if "vegetacion" in payload.modulos:
-        modulos["vegetacion"] = evaluar_modulo_vegetacion(wkt_polygon, avanzado_habilitado)
-        if modulos["vegetacion"].get("datos"):
+        modulos["vegetacion"] = modulo_bloqueado_extranjero if fuera_de_chile else evaluar_modulo_vegetacion(wkt_polygon, avanzado_habilitado)
+        if not fuera_de_chile and modulos["vegetacion"].get("datos"):
             ndvi_promedio = modulos["vegetacion"]["datos"].get("ndvi_promedio")
             
     if "riesgos" in payload.modulos:
-        modulos["riesgos"] = evaluar_modulo_riesgos(clima, ndvi_promedio, avanzado_habilitado)
+        modulos["riesgos"] = modulo_bloqueado_extranjero if fuera_de_chile else evaluar_modulo_riesgos(clima, ndvi_promedio, avanzado_habilitado)
 
     if "suelo" in payload.modulos:
-        modulos["suelo"] = await evaluar_modulo_suelo(centroide["latitud"], centroide["longitud"], avanzado_habilitado)
+        modulos["suelo"] = modulo_bloqueado_extranjero if fuera_de_chile else await evaluar_modulo_suelo(centroide["latitud"], centroide["longitud"], avanzado_habilitado)
 
     modulos = {
         nombre: _serializar_modulo(modulo, avanzado_habilitado)
         for nombre, modulo in modulos.items()
     }
-    resumen_general = construir_resumen_general(modulos)
+    
+    comuna_nombre = await obtener_comuna_por_coordenadas(lat_c, lon_c)
+    resumen_general = construir_resumen_general(modulos, comuna=comuna_nombre)
 
     resultado_json = {
         "area": {

@@ -19,7 +19,15 @@ def login_access_token(
     db: Session = Depends(deps.get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Any:
-    admin = db.query(Administrador).filter(Administrador.email == form_data.username).first()
+    try:
+        admin = db.query(Administrador).filter(Administrador.email == form_data.username).first()
+    except Exception as e:
+        print(f"Error accessing DB in login_access_token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno del servidor",
+        )
+        
     if not admin or not security.verify_password(form_data.password, admin.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

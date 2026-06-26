@@ -17,6 +17,8 @@
     "clsx": "^2.1.1",
     "expo": "54.0.35",
     "expo-constants": "~18.0.13",
+    "expo-file-system": "~19.0.23",
+    "expo-sharing": "~14.0.8",
     "framer-motion": "^12.12.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.511.0",
@@ -30,6 +32,7 @@
     "recharts": "^2.15.3",
     "socket.io-client": "^4.2.0",
     "tailwind-merge": "^3.3.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.28",
     "zustand": "^5.0.5"
   },

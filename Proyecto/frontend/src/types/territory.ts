@@ -52,6 +52,7 @@ export interface TerritoryAnalysisRequest {
   guardar: boolean;
   nombre?: string;
   cliente_anonimo_id?: string;
+  fecha_historica?: string;
   modulos: ModuleName[];
 }
 

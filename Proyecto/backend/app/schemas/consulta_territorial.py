@@ -21,6 +21,7 @@ class ConsultaTerritorialRequest(BaseModel):
     modulos: list[ModuloSolicitado] = Field(
         default_factory=lambda: ["agua", "clima", "territorio", "vegetacion", "riesgos", "suelo"]
     )
+    fecha_historica: str | None = Field(default=None, description="Fecha historica para analisis en el pasado (YYYY-MM-DD)")
 
     @model_validator(mode="after")
     def normalizar_poligono(self) -> "ConsultaTerritorialRequest":

@@ -48,9 +48,20 @@ async def fetch_layer_data(client: httpx.AsyncClient, service_name: str, out_fie
     query_url = f"https://rest-sit.mop.gob.cl/arcgis/rest/services/{service_name}/MapServer/0/query"
     
     discovery_payload = {'where': '1=1', 'returnIdsOnly': 'true', 'f': 'json'}
-    response = await client.post(query_url, data=discovery_payload, timeout=30.0)
-    response.raise_for_status()
-    object_ids = response.json().get("objectIds", [])
+    
+    object_ids = []
+    for attempt in range(3):
+        try:
+            response = await client.post(query_url, data=discovery_payload, timeout=60.0)
+            response.raise_for_status()
+            object_ids = response.json().get("objectIds", [])
+            break
+        except Exception as e:
+            logger.warning(f"Intento {attempt+1} fallido al obtener OIDs para {service_name}: {e}")
+            await asyncio.sleep(random.uniform(3.0, 7.0))
+            if attempt == 2:
+                logger.error(f"Fallo definitivo al obtener OIDs de {service_name}.")
+                return []
     
     if not object_ids:
         logger.info(f"No hay registros para {service_name}.")
@@ -72,7 +83,7 @@ async def fetch_layer_data(client: httpx.AsyncClient, service_name: str, out_fie
         }
         for attempt in range(3):
             try:
-                res = await client.post(query_url, data=payload, timeout=45.0)
+                res = await client.post(query_url, data=payload, timeout=90.0)
                 data = res.json()
                 if "error" in data:
                     raise Exception(data["error"]["message"])

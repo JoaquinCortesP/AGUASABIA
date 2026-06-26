@@ -5,36 +5,43 @@ import httpx
 
 
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
-
+OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 class ClimaServiceError(Exception):
     pass
 
-
 class ClimaServiceUnavailable(ClimaServiceError):
     pass
 
-
-async def obtener_clima_diario(latitud: float, longitud: float) -> dict[str, Any]:
+async def obtener_clima_diario(latitud: float, longitud: float, fecha_historica: str | None = None) -> dict[str, Any]:
+    url = OPEN_METEO_FORECAST_URL
     params = {
         "latitude": latitud,
         "longitude": longitud,
         "daily": "et0_fao_evapotranspiration,precipitation_sum",
         "timezone": "America/Santiago",
-        "forecast_days": 1,
     }
+    
+    if fecha_historica:
+        url = OPEN_METEO_ARCHIVE_URL
+        params["start_date"] = fecha_historica
+        params["end_date"] = fecha_historica
+    else:
+        params["forecast_days"] = 1
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(OPEN_METEO_FORECAST_URL, params=params)
+            response = await client.get(url, params=params)
     except (httpx.TimeoutException, httpx.TransportError) as exc:
+        print(f"Error Open-Meteo: {exc}")
         raise ClimaServiceUnavailable("No se pudo conectar con Open-Meteo") from exc
 
     if response.status_code >= 500:
         raise ClimaServiceUnavailable("Open-Meteo no esta disponible temporalmente")
 
     if response.status_code != 200:
-        raise ClimaServiceError("Open-Meteo rechazo la solicitud")
+        print(f"Error Open-Meteo {response.status_code}: {response.text}")
+        raise ClimaServiceError(f"Open-Meteo rechazo la solicitud. {response.text}")
 
     payload = response.json()
     daily = payload.get("daily") or {}
@@ -51,5 +58,6 @@ async def obtener_clima_diario(latitud: float, longitud: float) -> dict[str, Any
         "longitud": longitud,
         "et0_mm": float(et0_values[0] or 0),
         "precipitacion_mm": float(precipitation_values[0] or 0),
-        "fuente": "Open-Meteo",
+        "fuente": "Open-Meteo Archive" if fecha_historica else "Open-Meteo Forecast",
+        "historico": bool(fecha_historica)
     }

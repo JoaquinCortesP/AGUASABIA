@@ -17,32 +17,32 @@ def evaluar_modulo_riesgos(clima: dict[str, Any] | None = None, ndvi_promedio: f
     if ndvi_promedio is not None:
         if ndvi_promedio < 0.2:
             estado = "critico"
-            titulo = "Riesgo de sequía: Alto"
-            explicacion = "El índice de vegetación (NDVI) es muy bajo (< 0.2), lo que indica escasa vegetación verde o suelo desnudo, un síntoma común de sequía severa en zonas no desérticas."
+            titulo = "Riesgo de Sequía: Alto"
+            explicacion = "El análisis geoespacial arroja un índice de vegetación (NDVI) excepcionalmente bajo (< 0.2). Esto indica escasa cobertura verde o suelo desnudo, un patrón compatible con condiciones de sequía severa en zonas no desérticas."
             riesgo_sequia = "Alto"
         elif precipitacion < 5 and ndvi_promedio < 0.4:
             estado = "moderado"
-            titulo = "Estrés hídrico severo"
-            explicacion = "La vegetación muestra signos de estrés (NDVI < 0.4) combinado con escasez de lluvia reciente (< 5mm). Esto advierte sobre un déficit hídrico en el terreno."
+            titulo = "Alerta de Estrés Hídrico"
+            explicacion = "El cruce de variables evidencia estrés vegetal (NDVI < 0.4) y un déficit hídrico reciente (precipitación < 5mm). Este escenario amerita monitoreo para prever impactos en el territorio."
             estres_hidrico = "Severo"
             riesgo_sequia = "Moderado"
         elif ndvi_promedio >= 0.4:
             estado = "normal"
-            titulo = "Vegetación saludable"
-            explicacion = "El índice NDVI indica presencia de vegetación fotosintéticamente activa, lo que sugiere un bajo riesgo de sequía inminente."
+            titulo = "Cobertura Vegetal Saludable"
+            explicacion = "El territorio presenta una actividad fotosintética vigorosa y niveles adecuados de biomasa, lo que descarta riesgos inminentes de sequía severa."
 
     # Fallback si no hay NDVI pero el clima es extremo
     elif precipitacion == 0 and et0 >= 5:
         estado = "moderado"
-        titulo = "Señal climática de atención"
-        explicacion = "La combinación de precipitación nula y alta demanda atmosférica (ET0) sugiere revisar posibles síntomas de sequía o estrés en el terreno."
+        titulo = "Condiciones Climáticas Extremas"
+        explicacion = "La conjunción de precipitación nula y alta demanda atmosférica (ET0) configura un escenario propicio para el estrés hídrico. Se sugiere mantener vigilancia sobre la respuesta del terreno."
 
     avanzado = {}
     if avanzado_habilitado:
         avanzado = {
-            "criterio_temporal": "Evaluación basada en NDVI reciente y clima diario.",
+            "criterio_temporal": "Evaluación multiparamétrica basada en NDVI reciente y evapotranspiración de referencia.",
             "capas_futuras": ["incendios históricos", "exposición ambiental"],
-            "interpretacion_tecnica": f"El NDVI fue {ndvi_promedio if ndvi_promedio is not None else 'N/A'}. Un NDVI < 0.2 indica alto riesgo, y < 0.4 con baja lluvia indica estrés."
+            "interpretacion_tecnica": f"Algoritmo de inferencia: El NDVI calculado fue {ndvi_promedio if ndvi_promedio is not None else 'N/A'}. Valores < 0.2 activan alerta de sequía, mientras que valores < 0.4 concurrentes con déficit pluviométrico detonan alerta de estrés hídrico."
         }
 
     return {
@@ -58,7 +58,8 @@ def evaluar_modulo_riesgos(clima: dict[str, Any] | None = None, ndvi_promedio: f
             {
                 "nombre": "Motor de Inferencia AguaSabia",
                 "tipo": "interpretacion",
-                "descripcion": "Análisis cruzado de datos satelitales (Sentinel-2) y meteorológicos.",
+                "descripcion": "Algoritmo analítico que integra teleobservación espacial y variables meteorológicas.",
+                "url": None,
             }
         ],
         "avanzado": avanzado,

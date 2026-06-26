@@ -20,32 +20,39 @@ def register_usuario(
     db: Session = Depends(deps.get_db),
     usuario_in: UsuarioCreate,
 ) -> Usuario:
-    existing = db.query(Usuario).filter(Usuario.email == usuario_in.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Ya existe un usuario con ese email")
+    try:
+        existing = db.query(Usuario).filter(Usuario.email == usuario_in.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe un usuario con ese email")
 
-    import random
-    verification_code = f"{random.randint(100000, 999999)}"
-    
-    usuario = Usuario(
-        nombre=usuario_in.nombre,
-        email=usuario_in.email,
-        hashed_password=security.get_password_hash(usuario_in.password),
-        plan="gratis",
-        is_active=True,
-        is_verified=False,
-        verification_code=verification_code,
-    )
-    db.add(usuario)
-    db.commit()
-    db.refresh(usuario)
-    
-    # Imprimir código en consola
-    print("\n" + "="*80)
-    print(f">>> CODIGO DE VERIFICACION PARA ({usuario.email}): {verification_code} <<<")
-    print("="*80 + "\n")
-    
-    return usuario
+        import random
+        verification_code = f"{random.randint(100000, 999999)}"
+        
+        usuario = Usuario(
+            nombre=usuario_in.nombre,
+            email=usuario_in.email,
+            hashed_password=security.get_password_hash(usuario_in.password),
+            plan="gratis",
+            is_active=True,
+            is_verified=True,  # Set to True immediately until production email is ready
+            verification_code=verification_code,
+        )
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+        
+        # Imprimir código en consola
+        print("\n" + "="*80)
+        print(f">>> CODIGO DE VERIFICACION PARA ({usuario.email}): {verification_code} <<<")
+        print("="*80 + "\n")
+        
+        return usuario
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error en registro de usuario: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error interno del servidor al registrar usuario")
 
 
 @router.post("/login", response_model=Token)
@@ -54,11 +61,21 @@ def login_usuario(
     db: Session = Depends(deps.get_db),
     usuario_in: UsuarioLogin,
 ) -> Any:
-    usuario = db.query(Usuario).filter(Usuario.email == usuario_in.email).first()
-    if not usuario or not security.verify_password(usuario_in.password, usuario.hashed_password):
+    try:
+        usuario = db.query(Usuario).filter(Usuario.email == usuario_in.email).first()
+    except Exception as e:
+        print(f"Error accessing DB in login_usuario: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El correo electrónico no está registrado",
+        )
+    if not security.verify_password(usuario_in.password, usuario.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o contrasena incorrectos",
+            detail="Contraseña incorrecta",
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not usuario.is_active:

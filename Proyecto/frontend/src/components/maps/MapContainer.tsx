@@ -26,6 +26,26 @@ import {
   type MockEnvironmentalFeature,
 } from "./mockGeoData";
 
+function MapResizer() {
+
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    const container = map.getContainer();
+    if (container) {
+      observer.observe(container);
+    }
+    return () => {
+      if (container) observer.unobserve(container);
+      observer.disconnect();
+    };
+  }, [map]);
+  return null;
+}
+
+
 
 const vertexIcon = icon({
   iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="%23fbbf24" stroke="%230f172a" stroke-width="2"/></svg>',
@@ -151,6 +171,10 @@ export function MapContainer({
     polyOpacity = 0.4;
   }
 
+  // Si se está dibujando y hay 1 o 2 puntos, mostramos una línea en lugar de un polígono
+  const showPolyline = polygon.length > 0 && polygon.length < 3;
+  const showPolygon = polygon.length >= 3;
+
   return (
     <div className={cn("relative h-full min-h-[520px] overflow-hidden rounded-lg border border-border", className)}>
       <LeafletMapContainer
@@ -158,8 +182,9 @@ export function MapContainer({
         zoom={6}
         minZoom={4}
         scrollWheelZoom
-        className="h-full min-h-[520px]"
+        className="h-full min-h-[520px] w-full z-0"
       >
+        <MapResizer />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -325,21 +350,41 @@ export function MapContainer({
           </Circle>
         ))}
 
-        {polygon.length >= 3 ? (
+        {/* Renderizado de Puntos del Polígono */}
+        {polygon.map((p, idx) => (
+          <Marker
+            key={`poly-vertex-${idx}`}
+            position={[p.latitud, p.longitud]}
+            icon={vertexIcon}
+          />
+        ))}
+
+        {/* Línea temporal cuando hay 1 o 2 puntos dibujados */}
+        {showPolyline && (
+          <Polyline
+            positions={polygon.map((p) => [p.latitud, p.longitud])}
+            pathOptions={{
+              color: polyColor,
+              weight: 3,
+              dashArray: "5 5",
+            }}
+          />
+        )}
+
+        {/* Polígono completo */}
+        {showPolygon && (
           <Polygon
-            positions={positions}
+            positions={polygon.map((p) => [p.latitud, p.longitud])}
             pathOptions={{
               color: polyColor,
               fillColor: polyFill,
               fillOpacity: polyOpacity,
-              weight: 2,
+              weight: 3,
             }}
           >
             <Tooltip sticky>Zona seleccionada</Tooltip>
           </Polygon>
-        ) : polygon.length > 1 ? (
-          <Polyline positions={positions} pathOptions={{ color: "#0e7490", weight: 2 }} />
-        ) : null}
+        )}
 
         {/* Controladores de Arrastre para Polígono (Movimiento) */}
         {onPolygonChange && polygon.length > 0 && (

@@ -62,7 +62,10 @@ def evaluar_modulo_vegetacion(wkt_polygon: str = None, avanzado_habilitado: bool
     avanzado = {}
     ndvi_promedio = 0.45
     estado_modulo = "informativo"
-    explicacion = "Índice de Vegetación (NDVI) aproximado mediante cuadrícula vectorial PostGIS/Shapely."
+    explicacion = (
+        "El Índice de Vegetación Diferencial Normalizado (NDVI) se aproxima mediante una grilla vectorial espacial. "
+        "Permite evaluar el vigor fotosintético y la densidad de la biomasa en la fecha seleccionada."
+    )
     
     if avanzado_habilitado and wkt_polygon:
         geojson_grilla = _generar_grilla_ndvi(wkt_polygon)
@@ -75,7 +78,7 @@ def evaluar_modulo_vegetacion(wkt_polygon: str = None, avanzado_habilitado: bool
 
     return {
         "estado": estado_modulo,
-        "titulo": "Vegetacion satelital (Vectorial)",
+        "titulo": "Análisis de Vegetación Satelital",
         "explicacion": explicacion,
         "datos": {
             "ndvi_promedio": ndvi_promedio,

@@ -1,7 +1,9 @@
 import React from 'react';
-import { StyleSheet, SafeAreaView, View, Text, ActivityIndicator } from 'react-native';
+import { StyleSheet, SafeAreaView, View, Text, ActivityIndicator, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export default function App() {
   // Get host URI from expo config to connect to the computer's local IP address
@@ -20,18 +22,39 @@ export default function App() {
 
   console.log(`[AguaSabia Mobile] Cargando WebView en: ${webAppUrl}`);
 
+  const handleMessage = async (event) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'download_excel') {
+        const fileUri = `${FileSystem.documentDirectory}${data.filename}`;
+        await FileSystem.writeAsStringAsync(fileUri, data.data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            dialogTitle: 'Exportar Reporte AguaSabia'
+          });
+        } else {
+          Alert.alert("Compartir no disponible", "No se puede guardar el archivo en este dispositivo.");
+        }
+      }
+    } catch (error) {
+      console.error("Error al procesar mensaje del webview:", error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>AguaSabia Móvil (Expo Go)</Text>
-        <Text style={styles.subtext}>Conectado a: {webAppUrl}</Text>
-      </View>
+      {/* Reducimos el header al mínimo o lo eliminamos para dar espacio al mapa */}
       <WebView 
         source={{ uri: webAppUrl }} 
         style={styles.webview}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
+        onMessage={handleMessage}
         renderLoading={() => (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#d4af37" />

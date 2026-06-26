@@ -12,8 +12,8 @@ async def evaluar_modulo_suelo(latitud: float, longitud: float, avanzado_habilit
     url = f"https://rest.isric.org/soilgrids/v2.0/properties/query?lon={longitud}&lat={latitud}&property=clay&property=sand&property=silt&property=phh2o&property=nitrogen"
     success = False
     try:
-        # 3.0s timeout to make sure it doesn't block the backend if SoilGrids is slow or 504s
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        # 6.0s timeout to make sure it doesn't block forever, but enough for SoilGrids
+        async with httpx.AsyncClient(timeout=6.0) as client:
             resp = await client.get(url)
             if resp.status_code == 200:
                 data = resp.json()
@@ -105,13 +105,29 @@ async def evaluar_modulo_suelo(latitud: float, longitud: float, avanzado_habilit
             else:
                 textura = "Franco" # Loam
                 
+    descripciones_textura = {
+        "Arcillosa": "Suelo pesado y compacto que retiene mucha humedad y nutrientes, pero con bajo drenaje y riesgo de encharcamiento.",
+        "Arcillo-Limo-Arenosa": "Suelo equilibrado con cierta tendencia arcillosa, ofreciendo buena retención pero que requiere manejo para evitar compactación.",
+        "Arcillo-Arenosa": "Suelo con buena cantidad de arena y arcilla, ofreciendo una combinación de drenaje y retención de humedad media.",
+        "Arenosa": "Suelo muy suelto y poroso, drena el agua rápidamente pero retiene pocos nutrientes.",
+        "Areno-Arcillosa": "Suelo predominantemente arenoso pero con suficiente arcilla para retener cierta humedad.",
+        "Areno-Limosa": "Suelo suelto con buena aireación, aunque susceptible a la erosión hídrica.",
+        "Limosa": "Suelo suave al tacto, retiene bien el agua y es fértil, pero puede compactarse fácilmente y formar costras superficiales.",
+        "Franco-Arenosa": "Suelo equilibrado con mayor proporción de arena. Muy manejable, drena bien y es fácil de trabajar agrícolamente.",
+        "Franco": "Suelo ideal (Loam). Mezcla equilibrada de arena, limo y arcilla. Excelente retención de agua, buena aireación y alta fertilidad. Muy apto para la mayoría de los cultivos."
+    }
+
+    explicacion_base = descripciones_textura.get(textura, "Textura de suelo basada en proporciones de arena, limo y arcilla.")
+    
     explicacion = (
-        f"Análisis de suelo obtenido mediante SoilGrids en el centroide de la parcela ({latitud:.5f}, {longitud:.5f}). "
-        f"Presenta una textura clasificada como '{textura}'."
+        f"Análisis edafológico obtenido mediante interpolación espacial (SoilGrids). "
+        f"La zona presenta una textura clasificada como '{textura}'. "
+        f"¿Qué significa esto? {explicacion_base}"
     )
     
     avanzado = {
         "textura": textura,
+        "significado": explicacion_base,
         "composicion": {
             "arcilla_pct": round(clay_pct, 1),
             "arena_pct": round(sand_pct, 1),
@@ -130,7 +146,7 @@ async def evaluar_modulo_suelo(latitud: float, longitud: float, avanzado_habilit
 
     return {
         "estado": "informativo",
-        "titulo": "Informacion del tipo de suelo (SoilGrids)",
+        "titulo": "Información Edafológica Inicial",
         "explicacion": explicacion,
         "datos": {
             "textura": textura,

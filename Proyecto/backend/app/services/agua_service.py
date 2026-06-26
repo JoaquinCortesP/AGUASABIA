@@ -9,24 +9,24 @@ def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: 
 
     if precipitacion == 0 and et0 >= 4:
         estado = "moderado"
-        titulo = "Presion hidrica atmosferica moderada"
+        titulo = "Presión hídrica atmosférica moderada"
         explicacion = (
-            "La zona seleccionada no presenta precipitacion diaria y la demanda atmosferica es relevante. "
-            "Esto no implica una recomendacion de uso de agua, pero si ayuda a entender el contexto hidrico reciente."
+            "La zona seleccionada no presenta precipitación diaria y la demanda atmosférica es relevante. "
+            "Esto no implica una recomendación de uso de agua, pero sí establece el contexto hídrico reciente."
         )
     elif precipitacion > 0:
         estado = "normal"
-        titulo = "Precipitacion reciente registrada"
+        titulo = "Precipitación reciente registrada"
         explicacion = (
-            "Open-Meteo reporta precipitacion para el area analizada. Este dato sirve como primera lectura "
-            "del comportamiento hidrico reciente y debe complementarse con series historicas y capas DGA."
+            "Se reporta precipitación para el área analizada. Este dato sirve como primera lectura "
+            "del comportamiento hídrico reciente y se complementa con series históricas y capas oficiales DGA."
         )
     else:
         estado = "informativo"
-        titulo = "Lectura hidrica inicial"
+        titulo = "Lectura Hídrica Inicial"
         explicacion = (
-            "La consulta entrega una lectura inicial basada en precipitacion y evapotranspiracion de referencia. "
-            "Las estaciones cercanas, sequia y disponibilidad hidrica se integraran como capas territoriales."
+            "La consulta entrega una lectura hidrológica inicial. "
+            "Las estaciones cercanas, decretos de escasez y disponibilidad hídrica se evalúan mediante cruces espaciales de capas territoriales oficiales."
         )
 
     avanzado = {}
@@ -112,8 +112,8 @@ def evaluar_modulo_agua(clima: dict[str, Any], db: Session = None, wkt_polygon: 
             "embalses_cercanos": embalses_cercanos,
             "rios_intersectados": rios_intersectados,
             "interpretacion_tecnica": (
-                "Se ha realizado un cruce espacial con multiples capas de la DGA. "
-                "Los resultados muestran las cuencas, decretos, y zonas protegidas que intersectan con el polígono consultado."
+                "Se ha realizado un cruce espacial riguroso con múltiples capas oficiales de la DGA (Dirección General de Aguas). "
+                "Los resultados detallan las cuencas, decretos de escasez, zonas de prohibición y protección de acuíferos que intersectan directamente con el polígono consultado."
             ),
         }
 

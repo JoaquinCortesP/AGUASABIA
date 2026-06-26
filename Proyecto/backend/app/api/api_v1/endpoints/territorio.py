@@ -93,6 +93,10 @@ async def analizar_area(
         raise HTTPException(status_code=429, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error interno al procesar el análisis de territorio.")
 
 
 @router.get("/consultas", response_model=List[ConsultaTerritorialListItem])
