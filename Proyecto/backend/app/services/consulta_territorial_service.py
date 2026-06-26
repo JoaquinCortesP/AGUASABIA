@@ -128,10 +128,12 @@ async def analizar_consulta_territorial(
         print(f"Error PostGIS en ST_Area: {e}. Usando calculo plano de fallback.")
         superficie_aprox_ha = calcular_superficie_aprox_ha(poligono)
 
+    fecha_analisis = payload.fecha_fin or payload.fecha_historica
+    
     clima = await obtener_clima_diario(
         centroide["latitud"], 
         centroide["longitud"], 
-        fecha_historica=payload.fecha_historica
+        fecha_historica=fecha_analisis
     )
 
     modulos: dict[str, dict[str, Any]] = {}
@@ -187,7 +189,13 @@ async def analizar_consulta_territorial(
         )
     ndvi_promedio = None
     if "vegetacion" in payload.modulos:
-        modulos["vegetacion"] = modulo_bloqueado_extranjero if fuera_de_chile else evaluar_modulo_vegetacion(wkt_polygon, avanzado_habilitado)
+        modulos["vegetacion"] = modulo_bloqueado_extranjero if fuera_de_chile else evaluar_modulo_vegetacion(
+            latitud=centroide["latitud"], 
+            longitud=centroide["longitud"], 
+            wkt_polygon=wkt_polygon, 
+            avanzado_habilitado=avanzado_habilitado,
+            fecha_fin=fecha_analisis
+        )
         if not fuera_de_chile and modulos["vegetacion"].get("datos"):
             ndvi_promedio = modulos["vegetacion"]["datos"].get("ndvi_promedio")
             
@@ -196,6 +204,24 @@ async def analizar_consulta_territorial(
 
     if "suelo" in payload.modulos:
         modulos["suelo"] = modulo_bloqueado_extranjero if fuera_de_chile else await evaluar_modulo_suelo(centroide["latitud"], centroide["longitud"], avanzado_habilitado)
+
+    if avanzado_habilitado:
+        # Añadir Análisis Total y Metadatos para Pro
+        modulos["analisis_total"] = {
+            "estado": "informativo",
+            "titulo": "Análisis Técnico Total",
+            "explicacion": "Informe metodológico integral sobre la recolección y cálculo de datos.",
+            "datos": {
+                "fecha_inicio_rango": payload.fecha_inicio,
+                "fecha_fin_rango": fecha_analisis,
+                "nota": "Los datos representan la recolección del período seleccionado."
+            },
+            "fuentes": [],
+            "avanzado": {
+                "metodologia": "Los cálculos se obtienen cruzando bases de datos climáticas (Open-Meteo ERA5), edafológicas (SoilGrids) y espectrales (Sentinel-3 OLCI). Todo el proceso de abstracción, enmascaramiento de nubes y gap-filling se procesa de forma nativa asegurando precisión científica."
+            },
+            "avanzado_restringido": False
+        }
 
     modulos = {
         nombre: _serializar_modulo(modulo, avanzado_habilitado)

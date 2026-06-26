@@ -40,7 +40,7 @@ def evaluar_modulo_riesgos(clima: dict[str, Any] | None = None, ndvi_promedio: f
     avanzado = {}
     if avanzado_habilitado:
         avanzado = {
-            "criterio_temporal": "Evaluación multiparamétrica basada en NDVI reciente y evapotranspiración de referencia.",
+            "criterio_temporal": "Evaluación multiparamétrica basada en NDVI reciente (Sentinel-3) y evapotranspiración de referencia.",
             "capas_futuras": ["incendios históricos", "exposición ambiental"],
             "interpretacion_tecnica": f"Algoritmo de inferencia: El NDVI calculado fue {ndvi_promedio if ndvi_promedio is not None else 'N/A'}. Valores < 0.2 activan alerta de sequía, mientras que valores < 0.4 concurrentes con déficit pluviométrico detonan alerta de estrés hídrico."
         }

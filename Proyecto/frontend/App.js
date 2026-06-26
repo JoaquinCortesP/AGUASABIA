@@ -5,20 +5,9 @@ import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+  // Se utilizará la URL de producción o la que venga en la variable de entorno
 export default function App() {
-  // Get host URI from expo config to connect to the computer's local IP address
-  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.developer?.projectUrl;
-  let ip = 'localhost';
-  if (hostUri) {
-    // hostUri looks like: 192.168.1.X:8081 or exp://192.168.1.X:8081
-    const match = hostUri.match(/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/);
-    if (match) {
-      ip = match[1];
-    }
-  }
-
-  // Vite dev server runs on port 5173
-  const webAppUrl = `http://${ip}:5173`;
+  const webAppUrl = process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://aguasabia.cl';
 
   console.log(`[AguaSabia Mobile] Cargando WebView en: ${webAppUrl}`);
 

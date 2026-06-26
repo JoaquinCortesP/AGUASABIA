@@ -4,6 +4,7 @@ from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
+import httpx
 
 from app.api import deps
 from app.core.config import settings
@@ -310,7 +311,11 @@ async def exportar_excel(
     clima = modulos.get("clima", {})
     c_datos = clima.get("datos", {})
     technical_rows.append(("Clima", "Demanda Atmosférica (ET0)", f"{c_datos.get('et0_mm', 0.0)} mm/día", clima.get("explicacion", "")))
-    technical_rows.append(("Clima", "Precipitación Acumulada", f"{c_datos.get('precipitacion_mm', 0.0)} mm/día", "Cantidad de lluvia caída sobre la parcela en las últimas 24 horas."))
+    technical_rows.append(("Clima", "Balance Hídrico (Lluvia)", f"{c_datos.get('precipitacion_mm', 0.0)} mm/día", "Cantidad de lluvia líquida caída sobre la parcela en las últimas 24 horas."))
+    technical_rows.append(("Clima", "Acumulación Nival (SWE)", f"{c_datos.get('acumulacion_nival_swe_cm', 0.0)} cm", "Precipitación caída en forma sólida (Nieve)."))
+    technical_rows.append(("Clima", "Profundidad de Nieve", f"{c_datos.get('profundidad_nieve_m', 0.0)} m", "Nieve superficial detectada."))
+    if c_datos.get("sublimacion_eolica"):
+        technical_rows.append(("Clima", "Sublimación Eólica", "Activa", "Pérdida térmica latente debida al viento sobre la capa de hielo."))
 
     # Agua
     agua = modulos.get("agua", {})
@@ -347,6 +352,13 @@ async def exportar_excel(
     incendios_activos = r_datos.get("incendios_cercanos", 0)
     technical_rows.append(("Riesgos", "Riesgo de Sequía Extrema", riesgo.get("titulo", "Normal"), riesgo.get("explicacion", "")))
     technical_rows.append(("Riesgos", "Incendios Forestales Cercanos", f"{incendios_activos} focos activos", f"Focos de incendios forestales reportados por CONAF en las inmediaciones."))
+
+    # Análisis Total
+    total = modulos.get("analisis_total", {})
+    t_datos = total.get("datos", {})
+    if total:
+        technical_rows.append(("Análisis Total", "Período de Análisis", f"{t_datos.get('fecha_inicio_rango') or 'N/A'} a {t_datos.get('fecha_fin_rango') or 'Hoy'}", total.get("explicacion", "")))
+        technical_rows.append(("Análisis Total", "Metodología", "Cálculo Integral", total.get("avanzado", {}).get("metodologia", "")))
 
     for idx, (mod_name, param, val, desc) in enumerate(technical_rows):
         current_row = idx + 2
@@ -454,4 +466,40 @@ async def exportar_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@router.get("/incendios-historicos")
+async def get_incendios_historicos(
+    userType: str,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None,
+    year: Optional[str] = None,
+    current_usuario: Usuario = Depends(deps.get_optional_usuario)
+) -> Any:
+    """Proxy para extraer focos de incendios históricos desde IDE Minagri"""
+    base_url = "https://esri.ciren.cl/server/rest/services/IDEMINAGRI/INCENDIOS/MapServer/0/query"
+    
+    sql_where = "1=1"
+    if userType == 'visitante' and year:
+        # Ejemplo de formato de CONAF: '2023-2024'
+        sql_where = f"TEMPORADA LIKE '%{year}%'"
+    elif userType == 'pro' and startDate and endDate:
+        sql_where = f"FECHA_INICIO >= '{startDate}' AND FECHA_INICIO <= '{endDate}'"
+
+    params = {
+        "where": sql_where,
+        "outFields": "COMUNA,TEMPORADA,SUPERFICIE",
+        "outSR": "4326",
+        "f": "geojson"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(base_url, params=params, timeout=15.0)
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=502, detail="Error consultando IDE Minagri para incendios históricos")
 

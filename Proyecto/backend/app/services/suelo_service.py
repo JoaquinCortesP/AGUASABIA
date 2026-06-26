@@ -55,19 +55,22 @@ async def evaluar_modulo_suelo(latitud: float, longitud: float, avanzado_habilit
                     silt_val = (silt_val / total) * 1000.0
                 success = True
     except Exception as e:
-        print(f"Error al consultar SoilGrids: {e}. Usando fallback determinista.")
+        print(f"Error al consultar SoilGrids: {e}")
         
     if not success:
-        # Fallback values varying deterministically based on coordinates
-        seed = int(abs(latitud * 1000) + abs(longitud * 1000)) % 100
-        clay_val = 150.0 + (seed % 15) * 10.0  # 150 - 290
-        sand_val = 300.0 + ((seed + 17) % 25) * 10.0  # 300 - 540
-        silt_val = 1000.0 - clay_val - sand_val
-        if silt_val < 100:
-            silt_val = 150.0
-            sand_val = 1000.0 - clay_val - silt_val
-        ph_val = round(5.5 + (seed % 20) * 0.1, 1) # 5.5 - 7.4
-        nitrogen_val = 100.0 + (seed % 10) * 20.0 # 100 - 280
+        return {
+            "estado": "no_disponible",
+            "titulo": "Datos Edafológicos Inaccesibles",
+            "explicacion": "No se pudo conectar al proveedor satelital de suelos (ISRIC). Por favor intente más tarde.",
+            "datos": {},
+            "fuentes": [],
+            "avanzado": {},
+            "avanzado_restringido": not avanzado_habilitado,
+            "metadatos_informe": {
+                "explicacion_extraccion": "Intento de conexión a SoilGrids (ISRIC) fallido por timeout o error del servidor externo.",
+                "explicacion_calculo": "Sin datos para calcular textura o pH."
+            }
+        }
     
     # Determine USDA Soil Texture Class (Simplified)
     clay_pct = clay_val / 10.0
@@ -141,7 +144,11 @@ async def evaluar_modulo_suelo(latitud: float, longitud: float, avanzado_habilit
             "latitud": latitud,
             "longitud": longitud
         },
-        "api_status": "OK" if success else "FALLBACK"
+        "api_status": "OK",
+        "metadatos_informe": {
+            "explicacion_extraccion": "Conexión exitosa a la API REST de SoilGrids (ISRIC). Se consultaron las propiedades clay, sand, silt y phh2o a nivel superficial.",
+            "explicacion_calculo": "La textura del suelo (clasificación USDA) se calculó cruzando el porcentaje de arcilla, arena y limo normalizados sobre 100%."
+        }
     }
 
     return {

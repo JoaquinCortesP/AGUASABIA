@@ -5,6 +5,7 @@ import {
   Polygon,
   Polyline,
   TileLayer,
+  WMSTileLayer,
   Tooltip,
   useMap,
   GeoJSON,
@@ -18,13 +19,56 @@ import { toLeafletLatLng } from "@/lib/leaflet/geo";
 import { cn } from "@/lib/utils/cn";
 import type { AnalyzedArea, Coordinates, TerritoryAnalysisResponse } from "@/types/territory";
 import { api } from "@/services/api";
-import {
-  wildfiresData,
-  droughtZonesData,
-  wetlandsData,
-  basinsData,
-  type MockEnvironmentalFeature,
-} from "./mockGeoData";
+
+function WetlandsLayer() {
+  const [wetlandsGeoData, setWetlandsGeoData] = useState<any>(null);
+  const map = useMapEvents({
+    moveend: () => {
+      fetchWetlandsInView();
+    }
+  });
+
+  useEffect(() => {
+    fetchWetlandsInView();
+  }, []);
+
+  const fetchWetlandsInView = async () => {
+    const bounds = map.getBounds();
+    const geometry = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    const url = "https://arcgis.mma.gob.cl/server/rest/services/SIMBIO/SIMBIO_HUMEDALES/MapServer/0/query";
+    const params = new URLSearchParams({
+      geometry: geometry,
+      geometryType: "esriGeometryEnvelope",
+      spatialRel: "esriSpatialRelIntersects",
+      outFields: "NOM_HUMDET,ORDEN_1",
+      outSR: "4326",
+      f: "geojson"
+    });
+    try {
+      const response = await fetch(`${url}?${params.toString()}`);
+      const data = await response.json();
+      setWetlandsGeoData(data);
+    } catch (error) {
+      console.error("Error al cargar humedales MMA:", error);
+    }
+  };
+
+  return wetlandsGeoData ? (
+    <GeoJSON 
+      data={wetlandsGeoData} 
+      style={(feature: any) => ({
+        color: feature.properties.ORDEN_1 === 30 ? "#bff0f5" : "#41f0ca",
+        weight: 1,
+        fillOpacity: 0.5
+      })}
+      onEachFeature={(feature, layer) => {
+        if (feature.properties && feature.properties.NOM_HUMDET) {
+          layer.bindTooltip(`Humedal: ${feature.properties.NOM_HUMDET}`);
+        }
+      }}
+    />
+  ) : null;
+}
 
 function MapResizer() {
 
@@ -77,7 +121,6 @@ interface TerritoryMapContainerProps {
   analysisResult?: TerritoryAnalysisResponse | null;
   placingShape?: "square" | "rectangle" | "triangle" | null;
   onPlacingShapeChange?: (shape: "square" | "rectangle" | "triangle" | null) => void;
-  wildfires?: MockEnvironmentalFeature[];
   focusFeature?: { lat: number; lng: number; timestamp: number } | null;
 }
 
@@ -118,11 +161,13 @@ export function MapContainer({
   analysisResult = null,
   placingShape = null,
   onPlacingShapeChange,
-  wildfires = wildfiresData,
   focusFeature = null,
 }: TerritoryMapContainerProps) {
   const positions = toLeafletLatLng(polygon);
   const [acuiferosData, setAcuiferosData] = useState<any>(null);
+  const [droughtGeoData, setDroughtGeoData] = useState<any>(null);
+  const [basinsGeoData, setBasinsGeoData] = useState<any>(null);
+  const [wildfiresGeoData, setWildfiresGeoData] = useState<any>(null);
 
   const segments = [];
   if (polygon.length >= 2) {
@@ -136,6 +181,68 @@ export function MapContainer({
       segments.push({ from: p1, to: p2, distance });
     }
   }
+
+  useEffect(() => {
+    if (activeLayers.includes("sequia") && !droughtGeoData) {
+      const fetchDroughtDecrees = async () => {
+        const url = "https://rest-sit.mop.gob.cl/arcgis/rest/services/DGA/Decretos_Escasez_Hidrica/MapServer/0/query";
+        const queryParams = new URLSearchParams({
+          where: "1=1",
+          outFields: "ID_IDE",
+          outSR: "4326",
+          f: "geojson",
+          returnGeometry: "true"
+        });
+        try {
+          const res = await fetch(`${url}?${queryParams.toString()}`);
+          const geoJSON = await res.json();
+          setDroughtGeoData(geoJSON);
+        } catch (error) {
+          console.error("Fallo al conectar con el SIT del MOP", error);
+        }
+      };
+      fetchDroughtDecrees();
+    }
+  }, [activeLayers, droughtGeoData]);
+
+  useEffect(() => {
+    if (activeLayers.includes("cuencas") && !basinsGeoData) {
+      const fetchBasins = async () => {
+        const url = "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer/10/query";
+        const queryParams = new URLSearchParams({
+          where: "1=1",
+          outFields: "NOM_CUEN",
+          outSR: "4326",
+          geometryPrecision: "3",
+          f: "geojson"
+        });
+        try {
+          const res = await fetch(`${url}?${queryParams.toString()}`);
+          const data = await res.json();
+          setBasinsGeoData(data);
+        } catch (error) {
+          console.error("Error al cargar cuencas SMA", error);
+        }
+      };
+      fetchBasins();
+    }
+  }, [activeLayers, basinsGeoData]);
+
+  useEffect(() => {
+    if (activeLayers.includes("incendios") && !wildfiresGeoData) {
+      const fetchWildfires = async () => {
+        try {
+          const res = await api.get("/api/v1/territorio/incendios-historicos", {
+            params: { userType: "visitante", year: "2024" }
+          });
+          setWildfiresGeoData(res.data);
+        } catch (error) {
+          console.error("Error al cargar incendios históricos", error);
+        }
+      };
+      fetchWildfires();
+    }
+  }, [activeLayers, wildfiresGeoData]);
 
   useEffect(() => {
     if (activeLayers.includes("acuiferos") && !acuiferosData) {
@@ -262,92 +369,77 @@ export function MapContainer({
           />
         )}
 
-        {/* Renderizado de Incendios CONAF */}
-        {activeLayers.includes("incendios") && wildfires.map((f, idx) => (
-          <Marker
-            key={`fire-${idx}`}
-            position={[f.lat, f.lng]}
-            icon={flameIcon}
-          >
-            <Tooltip sticky>
-              <div className="p-2 text-xs max-w-[280px] whitespace-normal break-words font-sans text-slate-800 dark:text-slate-100">
-                <h4 className="font-bold text-red-500 mb-0.5">{f.name}</h4>
-                <p className="text-[10px] text-muted-foreground mb-1">Registrado: {f.value}</p>
-                <p className="leading-snug">{f.details}</p>
-              </div>
-            </Tooltip>
-          </Marker>
-        ))}
+        {/* Renderizado de Incendios CONAF (Históricos) */}
+        {activeLayers.includes("incendios") && wildfiresGeoData && (
+          <GeoJSON 
+            data={wildfiresGeoData} 
+            style={{
+              color: "#ea580c",
+              weight: 2,
+              fillOpacity: 0.6,
+              fillColor: "#ef4444"
+            }}
+            onEachFeature={(feature, layer) => {
+              if (feature.properties) {
+                layer.bindTooltip(`Incendio (${feature.properties.TEMPORADA}) - Comuna: ${feature.properties.COMUNA} - Sup: ${feature.properties.SUPERFICIE} ha`);
+              }
+            }}
+          />
+        )}
 
-        {/* Renderizado de Sequía Crítica */}
-        {activeLayers.includes("sequia") && droughtZonesData.map((f, idx) => (
-          <Circle
-            key={`drought-${idx}`}
-            center={[f.lat, f.lng]}
-            radius={f.radius || 15000}
-            pathOptions={{
+        {/* Capa de Incendios Activos (NASA FIRMS - WMS) */}
+        {activeLayers.includes("incendios") && (
+          <WMSTileLayer
+            url="https://gibs.earthdata.nasa.gov/twms/epsg4326/best/twms.cgi"
+            layers="MODIS_Aqua_CorrectedReflectance_TrueColor" // O la capa térmica VIIRS
+            format="image/png"
+            transparent={true}
+            version="1.1.1"
+            attribution="NASA EOSDIS GIBS"
+            opacity={0.7}
+          />
+        )}
+
+        {/* Renderizado de Sequía Crítica (Decretos MOP) */}
+        {activeLayers.includes("sequia") && droughtGeoData && (
+          <GeoJSON 
+            data={droughtGeoData} 
+            style={{
               color: "#dc2626",
               fillColor: "#ef4444",
               fillOpacity: 0.12,
               weight: 1.5,
               dashArray: "4 4"
             }}
-          >
-            <Tooltip sticky>
-              <div className="p-2 text-xs max-w-[280px] whitespace-normal break-words font-sans text-slate-800 dark:text-slate-100">
-                <h4 className="font-bold text-red-500 mb-0.5">{f.name}</h4>
-                <p className="text-[10px] text-muted-foreground mb-1">Región: {f.region}</p>
-                <p className="leading-snug">{f.details}</p>
-              </div>
-            </Tooltip>
-          </Circle>
-        ))}
+            onEachFeature={(feature, layer) => {
+              if (feature.properties) {
+                layer.bindTooltip(`Decreto Escasez Hídrica DGA (ID: ${feature.properties.ID_IDE})`);
+              }
+            }}
+          />
+        )}
 
         {/* Renderizado de Humedales Protegidos */}
-        {activeLayers.includes("humedales") && wetlandsData.map((f, idx) => (
-          <Circle
-            key={`wetland-${idx}`}
-            center={[f.lat, f.lng]}
-            radius={f.radius || 4000}
-            pathOptions={{
-              color: "#059669",
-              fillColor: "#10b981",
-              fillOpacity: 0.22,
-              weight: 2
-            }}
-          >
-            <Tooltip sticky>
-              <div className="p-2 text-xs max-w-[280px] whitespace-normal break-words font-sans text-slate-800 dark:text-slate-100">
-                <h4 className="font-bold text-emerald-500 mb-0.5">{f.name}</h4>
-                <p className="text-[10px] text-muted-foreground mb-1">Región: {f.region}</p>
-                <p className="leading-snug">{f.details}</p>
-              </div>
-            </Tooltip>
-          </Circle>
-        ))}
+        {activeLayers.includes("humedales") && <WetlandsLayer />}
 
-        {/* Renderizado de Cuencas Hidrográficas DGA */}
-        {activeLayers.includes("cuencas") && basinsData.map((f, idx) => (
-          <Circle
-            key={`basin-${idx}`}
-            center={[f.lat, f.lng]}
-            radius={f.radius || 30000}
-            pathOptions={{
+        {/* Renderizado de Cuencas Hidrográficas SMA */}
+        {activeLayers.includes("cuencas") && basinsGeoData && (
+          <GeoJSON 
+            data={basinsGeoData} 
+            style={{
               color: "#4f46e5",
               fillColor: "#6366f1",
               fillOpacity: 0.08,
               weight: 1.5,
               dashArray: "3 3"
             }}
-          >
-            <Tooltip sticky>
-              <div className="p-2 text-xs max-w-[280px] whitespace-normal break-words font-sans text-slate-800 dark:text-slate-100">
-                <h4 className="font-bold text-indigo-500 mb-0.5">{f.name}</h4>
-                <p className="text-[10px] text-muted-foreground mb-1">Región: {f.region}</p>
-                <p className="leading-snug">{f.details}</p>
-              </div>
-            </Tooltip>
-          </Circle>
+            onEachFeature={(feature, layer) => {
+              if (feature.properties && feature.properties.NOM_CUEN) {
+                layer.bindTooltip(`Cuenca: ${feature.properties.NOM_CUEN}`);
+              }
+            }}
+          />
+        )}
         ))}
 
         {/* Renderizado de Puntos del Polígono */}

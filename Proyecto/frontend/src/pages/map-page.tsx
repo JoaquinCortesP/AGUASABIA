@@ -10,8 +10,6 @@ import type { Coordinates } from "@/types/territory";
 import { calcularAreaHectareas } from "@/lib/leaflet/geo";
 import { HelpCircle, Info, X, Menu, FileSpreadsheet, Download } from "lucide-react";
 import { api } from "@/services/api";
-import { basinsData, wetlandsData, wildfiresData, droughtZonesData } from "@/components/maps/mockGeoData";
-
 export function MapPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -24,6 +22,7 @@ export function MapPage() {
   const [placingShape, setPlacingShape] = useState<"square" | "rectangle" | "triangle" | null>(null);
   const [activeConcept, setActiveConcept] = useState<string | null>(null);
   const [fechaHistorica, setFechaHistorica] = useState<string>("");
+  const [fechaInicio, setFechaInicio] = useState<string>("");
   
   // VS Code / Visual Studio panel folding style
   const [leftPanelOpen, setLeftPanelOpen] = useState(typeof window !== "undefined" ? window.innerWidth > 768 : true);
@@ -125,7 +124,9 @@ export function MapPage() {
         modo: isPremiumPro ? "avanzado" : "resumen", // Determinado automáticamente
         guardar: !!user,
         modulos: ["agua", "clima", "territorio", "vegetacion", "riesgos", "suelo"],
+        fecha_inicio: isPremiumPro && fechaInicio ? fechaInicio : undefined,
         fecha_historica: fechaHistorica || undefined,
+        fecha_fin: isPremiumPro && fechaHistorica ? fechaHistorica : undefined,
       }),
     onSuccess: (data) => {
       setAnalysisResult(data);
@@ -910,23 +911,11 @@ export function MapPage() {
     });
   }
 
-  if (activeLayers.includes("cuencas")) {
-    layerItems["cuencas"] = basinsData.map(b => ({ name: b.name, lat: b.lat, lng: b.lng }));
-  }
-
-  if (activeLayers.includes("humedales")) {
-    layerItems["humedales"] = wetlandsData.map(w => ({ name: w.name, lat: w.lat, lng: w.lng }));
-  }
-
-  if (activeLayers.includes("incendios")) {
-    layerItems["incendios"] = wildfiresData
-      .filter(fi => fi.value && fi.value.includes(selectedWildfireYear))
-      .map(fi => ({ name: fi.name, lat: fi.lat, lng: fi.lng }));
-  }
-
-  if (activeLayers.includes("sequia")) {
-    layerItems["sequia"] = droughtZonesData.map(d => ({ name: d.name, lat: d.lat, lng: d.lng }));
-  }
+  // Capas eliminadas del listado lateral para optimización de rendimiento:
+  // - humedales
+  // - cuencas
+  // - incendios
+  // - sequia
 
   if (activeLayers.includes("rios")) {
     layerItems["rios"] = (estacionesFiltradas || [])
@@ -1091,9 +1080,9 @@ export function MapPage() {
                   setIsDrawing(!isDrawing);
                   setPlacingShape(null); // Cancel placing shape
                 }}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isDrawing ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted hover:bg-muted/80 text-foreground border border-border/60"}`}
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isDrawing ? "bg-destructive text-destructive-foreground shadow-md shadow-destructive/20" : "bg-muted hover:bg-muted/80 text-foreground border border-border/60"}`}
               >
-                {isDrawing ? "Dibujando..." : "Dibujar Área"}
+                {isDrawing ? "Detener Dibujo" : "Dibujar Área"}
               </button>
               <button 
                 onClick={handleClear}
@@ -1103,17 +1092,52 @@ export function MapPage() {
               </button>
             </div>
 
-            <div className="pt-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
-                Fecha de Análisis Histórico (Opcional)
+            <div className="pt-2 space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                {isPremiumPro ? "Rango de Análisis (Pro)" : "Año Histórico"}
               </label>
-              <input 
-                type="date" 
-                value={fechaHistorica}
-                onChange={(e) => setFechaHistorica(e.target.value)}
-                className="w-full bg-background border border-border/60 text-foreground text-sm rounded-lg p-2.5 focus:ring-1 focus:ring-primary focus:border-primary transition"
-                max={new Date().toISOString().split("T")[0]}
-              />
+              
+              {!isPremiumPro ? (
+                <div className="space-y-1">
+                  <select
+                    value={fechaHistorica.substring(0, 4) || ""}
+                    onChange={(e) => setFechaHistorica(e.target.value ? `${e.target.value}-01-01` : "")}
+                    className="w-full bg-background border border-border/60 text-foreground text-sm rounded-lg p-2 focus:ring-1 focus:ring-primary focus:border-primary transition"
+                  >
+                    <option value="">Año actual (Automático)</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                    <option value="2021">2021</option>
+                  </select>
+                  <p className="text-[10px] text-primary">⭐ Pásate a Pro para seleccionar días específicos y rangos.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-muted-foreground">Desde</span>
+                    <input 
+                      type="date" 
+                      value={fechaInicio}
+                      onChange={(e) => setFechaInicio(e.target.value)}
+                      className="w-full bg-background border border-border/60 text-foreground text-xs rounded-lg p-2 focus:ring-1 focus:ring-primary transition"
+                      max={fechaHistorica || new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground">Hasta</span>
+                    <input 
+                      type="date" 
+                      value={fechaHistorica}
+                      onChange={(e) => setFechaHistorica(e.target.value)}
+                      className="w-full bg-background border border-border/60 text-foreground text-xs rounded-lg p-2 focus:ring-1 focus:ring-primary transition"
+                      min={fechaInicio}
+                      max={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <button 
@@ -1161,7 +1185,6 @@ export function MapPage() {
           analysisResult={analysisResult}
           placingShape={placingShape}
           onPlacingShapeChange={setPlacingShape}
-          wildfires={wildfiresData.filter(f => f.value && f.value.includes(selectedWildfireYear))}
           focusFeature={focusFeature}
           className="h-full rounded-xl shadow-lg border border-border/60 overflow-hidden"
         />
@@ -1472,46 +1495,6 @@ export function MapPage() {
                 </div>
               </div>
 
-              {/* Estudio de Compra e Inversión Territorial */}
-              <div className="bg-card border border-border/80 p-5 rounded-xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">💰</span>
-                  <h4 className="font-bold text-sm text-primary">Estudio de Compra e Inversión Territorial (Pro)</h4>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Evaluación automatizada de factibilidad comercial y riesgos hidrológicos para la adquisición del terreno:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                  <div className="bg-muted/40 p-3 rounded-lg border border-border/40 text-center">
-                    <span className="text-[10px] text-muted-foreground block uppercase font-bold">Riesgo de Sequía</span>
-                    <span className={`text-sm font-bold ${
-                      analysisResult.modulos?.riesgos?.datos?.riesgo_sequia === "Alto" ? "text-red-500" : "text-amber-500"
-                    }`}>
-                      {analysisResult.modulos?.riesgos?.datos?.riesgo_sequia ?? "Moderado"}
-                    </span>
-                    <p className="text-[9px] text-muted-foreground mt-1 leading-snug">Zona con déficit acumulado; demanda de riego moderada.</p>
-                  </div>
-                  <div className="bg-muted/40 p-3 rounded-lg border border-border/40 text-center">
-                    <span className="text-[10px] text-muted-foreground block uppercase font-bold">Peligro Ambiental</span>
-                    <span className={`text-sm font-bold ${
-                      analysisResult.modulos?.riesgos?.datos?.incendios_cercanos ? "text-red-500" : "text-emerald-500"
-                    }`}>
-                      {analysisResult.modulos?.riesgos?.datos?.incendios_cercanos ? "Focos Activos" : "Bajo"}
-                    </span>
-                    <p className="text-[9px] text-muted-foreground mt-1 leading-snug">Alejado de focos históricos de incendios e inundaciones.</p>
-                  </div>
-                  <div className="bg-muted/40 p-3 rounded-lg border border-border/40 text-center">
-                    <span className="text-[10px] text-muted-foreground block uppercase font-bold">Factibilidad Comercial</span>
-                    <span className="text-sm font-bold text-primary">
-                      {analysisResult.modulos?.agua?.avanzado?.decretos_escasez_dga?.length > 0 ? "Restringido (DGA)" : "Favorable con Reservas"}
-                    </span>
-                    <p className="text-[9px] text-muted-foreground mt-1 leading-snug">Recomendado constituir o verificar derechos de agua inscritos.</p>
-                  </div>
-                </div>
-                <div className="bg-amber-500/5 border border-amber-500/20 p-3 rounded-lg text-[10px] leading-relaxed text-amber-600 dark:text-amber-400">
-                  <span className="font-bold">Consejo de Adquisición:</span> Al existir intersecciones potenciales con acuíferos protegidos DGA, el costo de adquisición por hectárea debería ponderarse a la baja si no cuenta con derechos de aprovechamiento de aguas subterráneas pre-constituidos.
-                </div>
-              </div>
 
               {/* Suelo Detallado ISRIC */}
               <div className="bg-card border border-border/80 p-5 rounded-xl space-y-4">

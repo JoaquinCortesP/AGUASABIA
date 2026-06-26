@@ -21,14 +21,8 @@ export function HomePage() {
           </p>
           <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link 
-              to="/mapa" 
-              className="w-full sm:w-auto bg-gradient-to-r from-primary to-amber-500 hover:from-primary/95 hover:to-amber-500/95 text-primary-foreground font-semibold px-8 py-4 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Comenzar Análisis
-            </Link>
-            <Link 
               to="/aprender" 
-              className="w-full sm:w-auto bg-muted/65 hover:bg-muted border border-border/80 text-foreground font-semibold px-8 py-4 rounded-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto bg-gradient-to-r from-primary to-amber-500 hover:from-primary/95 hover:to-amber-500/95 text-primary-foreground font-semibold px-8 py-4 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
             >
               Simular Balance Hídrico
             </Link>
