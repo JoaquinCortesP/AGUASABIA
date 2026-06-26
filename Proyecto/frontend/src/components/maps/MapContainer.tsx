@@ -440,8 +440,6 @@ export function MapContainer({
             }}
           />
         )}
-        ))}
-
         {/* Renderizado de Puntos del Polígono */}
         {polygon.map((p, idx) => (
           <Marker
