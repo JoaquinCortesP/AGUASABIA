@@ -3,14 +3,15 @@ import { Link } from "react-router-dom";
 export function HomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      {/* Hero Section */}
-      <section className="relative w-full py-24 md:py-36 flex flex-col items-center justify-center text-center px-4 overflow-hidden border-b border-border/40">
-        {/* Subtle decorative background gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
+      <section 
+        className="relative w-full py-24 md:py-36 flex flex-col items-center justify-center text-center px-4 overflow-hidden border-b border-border/40 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/mifoto.jpg')" }}
+      >
+        <div className="absolute inset-0 bg-background/80 pointer-events-none" />
         
         <div className="max-w-4xl space-y-6 relative z-10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 border border-primary/20 text-primary uppercase tracking-wider">
-            🔬 Investigación & Tecnología Territorial
+             Investigación & Tecnología Territorial
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground leading-tight">
             Plataforma Territorial de <br />
