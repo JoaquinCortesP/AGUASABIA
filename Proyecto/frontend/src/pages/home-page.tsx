@@ -5,7 +5,7 @@ export function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <section 
         className="relative w-full py-24 md:py-36 flex flex-col items-center justify-center text-center px-4 overflow-hidden border-b border-border/40 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/mifoto.jpg')" }}
+        style={{ backgroundImage: "url('/fondo.jpg')" }}
       >
         <div className="absolute inset-0 bg-background/80 pointer-events-none" />
         
