@@ -1,5 +1,4 @@
 import { Outlet, Link } from "react-router-dom";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 
 export function PublicLayout() {
@@ -11,7 +10,6 @@ export function PublicLayout() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="text-2xl font-extrabold text-brand-gradient tracking-tight transition duration-300 hover:opacity-90">AguaSabia</Link>
           <nav className="flex gap-4 items-center">
-            <ThemeToggle />
             {isAuthenticated ? (
               <Link to="/mapa" className="text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]">Comenzar Análisis</Link>
             ) : (
