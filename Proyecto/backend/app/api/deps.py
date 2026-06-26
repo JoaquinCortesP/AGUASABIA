@@ -72,7 +72,8 @@ def _decode_token(token: str) -> TokenPayload:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         return TokenPayload(**payload)
-    except (JWTError, ValidationError):
+    except Exception as e:
+        print(f"ERROR DECODING TOKEN: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No se pudo validar el token",
@@ -89,10 +90,10 @@ def get_current_usuario(
         )
 
     token_data = _decode_token(token)
-    if token_data.role != "usuario" or token_data.sub is None:
+    if token_data.role not in ("usuario", "admin") or token_data.sub is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token de usuario invalido",
+            detail="Token invalido",
         )
 
     if not token_data.sub.isdigit():
@@ -100,6 +101,15 @@ def get_current_usuario(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token de usuario invalido",
         )
+
+    if token_data.role == "admin":
+        # Devolver un objeto compatible o el propio admin
+        admin = db.query(Administrador).filter(Administrador.id == int(token_data.sub)).first()
+        if not admin or not admin.is_active:
+            raise HTTPException(status_code=404, detail="Admin no encontrado")
+        # Duck typing: current_usuario needs id, plan, role for most things
+        admin.plan = "pro"
+        return admin
 
     usuario = db.query(Usuario).filter(Usuario.id == int(token_data.sub)).first()
     if not usuario:
@@ -120,11 +130,18 @@ def get_optional_usuario(
     except Exception:
         return None
 
-    if token_data.role != "usuario" or token_data.sub is None:
+    if token_data.role not in ("usuario", "admin") or token_data.sub is None:
         return None
 
     if not token_data.sub.isdigit():
         return None
+
+    if token_data.role == "admin":
+        admin = db.query(Administrador).filter(Administrador.id == int(token_data.sub)).first()
+        if not admin or not admin.is_active:
+            return None
+        admin.plan = "pro"
+        return admin
 
     usuario = db.query(Usuario).filter(Usuario.id == int(token_data.sub)).first()
     if not usuario or not usuario.is_active:

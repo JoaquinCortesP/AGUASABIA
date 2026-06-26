@@ -396,7 +396,11 @@ export function MapContainer({
             }}
             onEachFeature={(feature, layer) => {
               if (feature.properties) {
-                layer.bindTooltip(`Incendio (${feature.properties.TEMPORADA}) - Comuna: ${feature.properties.COMUNA} - Sup: ${feature.properties.SUPERFICIE} ha`, { className: "text-slate-800 font-semibold" });
+                const props = feature.properties;
+                const temporada = props.temporada || props.TEMPORADA || "Desconocida";
+                const comuna = props.comuna || props.COMUNA || "Desconocida";
+                const sup = props.superficie || props.SUPERFICIE || "0";
+                layer.bindTooltip(`Incendio (${temporada}) - Comuna: ${comuna} - Sup: ${sup} ha`, { className: "text-slate-800 font-semibold" });
               }
             }}
           />
@@ -428,11 +432,48 @@ export function MapContainer({
               dashArray: "4 4"
             }}
             onEachFeature={(feature, layer) => {
-              if (feature.properties) {
+              if (feature.properties && feature.properties.ID_IDE) {
                 layer.bindTooltip(`Decreto Escasez Hídrica DGA (ID: ${feature.properties.ID_IDE})`, { className: "text-slate-800 font-semibold" });
               }
             }}
           />
+        )}
+
+        {/* Renderizado de Estaciones DGA (Ríos y Embalses) */}
+        {(activeLayers.includes("rios") || activeLayers.includes("embalses")) && estaciones && estaciones.length > 0 && (
+          <>
+            {estaciones.map((est, idx) => {
+              // Filtrar según capa seleccionada (básico)
+              const tipo = (est.tipo_estacion || "").toLowerCase();
+              const isRio = tipo.includes("fluvio") || tipo.includes("calidad");
+              const isEmbalse = tipo.includes("control") || tipo.includes("nivel");
+              
+              if (activeLayers.includes("rios") && !isRio && !activeLayers.includes("embalses")) return null;
+              if (activeLayers.includes("embalses") && !isEmbalse && !activeLayers.includes("rios")) return null;
+              
+              const p = est.point_wgs84;
+              if (!p || p.coordinates.length < 2) return null;
+              return (
+                <CircleMarker
+                  key={`est-${est.id}-${idx}`}
+                  center={[p.coordinates[1], p.coordinates[0]]}
+                  radius={5}
+                  pathOptions={{
+                    color: "white",
+                    weight: 1,
+                    fillColor: getEstacionColor(est.tipo_estacion),
+                    fillOpacity: 0.9,
+                  }}
+                >
+                  <Tooltip className="text-slate-800 font-semibold">
+                    <div className="font-bold text-blue-600 border-b border-blue-200 pb-1 mb-1">Estación DGA</div>
+                    {est.nom_estacion}<br />
+                    <span className="text-xs text-slate-500 font-normal">Tipo: {est.tipo_estacion}</span>
+                  </Tooltip>
+                </CircleMarker>
+              );
+            })}
+          </>
         )}
 
         {/* Renderizado de Humedales Protegidos */}
@@ -615,31 +656,32 @@ export function MapContainer({
               }}
             >
               <Tooltip direction="top" offset={[0, -10]}>
-                <div className="font-sans min-w-[160px] p-1 text-slate-800 dark:text-slate-100">
-                  <h4 className="font-bold text-sm mb-1 leading-tight text-slate-900 dark:text-white">
+                <div className="font-sans min-w-[160px] p-1 text-slate-800">
+                  <h4 className="font-bold text-sm mb-1 leading-tight text-slate-900">
                     {feature.properties.nombre}
                   </h4>
                   <p className="text-xs leading-normal mb-1">
-                    <span className="font-semibold text-slate-500 dark:text-slate-400">Código:</span> {feature.properties.cod_estacion}<br />
-                    <span className="font-semibold text-slate-500 dark:text-slate-400">Tipo:</span>{" "}
+                    <span className="font-semibold text-slate-500">Código:</span> {feature.properties.cod_estacion}<br />
+                    <span className="font-semibold text-slate-500">Tipo:</span>{" "}
                     <span
                       style={{
-                        color: color,
+                        color: "#ffffff",
                         fontWeight: "bold",
-                        background: "#1e293b",
-                        padding: "1px 5px",
-                        borderRadius: "3px",
+                        background: color,
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        textShadow: "0px 1px 2px rgba(0,0,0,0.5)"
                       }}
                     >
                       {tipo}
                     </span>
                   </p>
                   {(tipo.toLowerCase().includes("control") || tipo.toLowerCase().includes("nivel") || tipo.toLowerCase().includes("embalse") || tipo.toLowerCase().includes("lago")) && (
-                    <div className="mt-2 pt-2 border-t border-slate-700">
-                      <span className="text-xs font-semibold text-amber-500 block mb-1">
+                    <div className="mt-2 pt-2 border-t border-slate-300">
+                      <span className="text-xs font-bold text-amber-600 block mb-1">
                         💧 Volumen/Nivel:
                       </span>
-                      <span className="text-[10px] text-slate-400 italic block">
+                      <span className="text-[10px] text-slate-500 font-medium italic block">
                         Fechas disponibles proximamente. . . .
                       </span>
                     </div>
@@ -663,15 +705,7 @@ function FitToGeometry({
   const map = useMap();
 
   useEffect(() => {
-    if (area?.bbox) {
-      const bounds = latLngBounds(
-        [area.bbox.min_latitud, area.bbox.min_longitud],
-        [area.bbox.max_latitud, area.bbox.max_longitud]
-      );
-      map.fitBounds(bounds, { padding: [20, 20] });
-    } else if (area?.centroide) {
-      map.setView([area.centroide.latitud, area.centroide.longitud], 12);
-    }
+    // Zoom automático desactivado por solicitud del usuario
   }, [area, map]);
 
   return null;

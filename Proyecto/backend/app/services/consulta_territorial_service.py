@@ -157,8 +157,9 @@ async def analizar_consulta_territorial(
 
     modulos: dict[str, dict[str, Any]] = {}
     if "clima" in payload.modulos:
+        fecha_val = clima.get("fecha_recoleccion", clima.get("fecha"))
         avanzado = {
-            "fecha": clima["fecha"].isoformat(),
+            "fecha": fecha_val.isoformat() if hasattr(fecha_val, "isoformat") else str(fecha_val),
             "et0_mm": clima["et0_mm"],
             "precipitacion_mm": clima["precipitacion_mm"],
             "latitud": clima["latitud"],
@@ -172,7 +173,7 @@ async def analizar_consulta_territorial(
                 "Sirve como lectura inicial del comportamiento reciente."
             ),
             "datos": {
-                "fecha": clima["fecha"].isoformat(),
+                "fecha": fecha_val.isoformat() if hasattr(fecha_val, "isoformat") else str(fecha_val),
                 "precipitacion_mm": clima["precipitacion_mm"],
                 "et0_mm": clima["et0_mm"],
             },

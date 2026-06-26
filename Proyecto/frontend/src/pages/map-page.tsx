@@ -1093,54 +1093,6 @@ export function MapPage() {
               </button>
             </div>
 
-            <div className="pt-2 space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-                {isPremiumPro ? "Rango de Análisis (Pro)" : "Año Histórico"}
-              </label>
-              
-              {!isPremiumPro ? (
-                <div className="space-y-1">
-                  <select
-                    value={fechaHistorica.substring(0, 4) || ""}
-                    onChange={(e) => setFechaHistorica(e.target.value ? `${e.target.value}-01-01` : "")}
-                    className="w-full bg-background border border-border/60 text-foreground text-sm rounded-lg p-2 focus:ring-1 focus:ring-primary focus:border-primary transition"
-                  >
-                    <option value="">Año actual (Automático)</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                    <option value="2023">2023</option>
-                    <option value="2022">2022</option>
-                    <option value="2021">2021</option>
-                  </select>
-                  <p className="text-[10px] text-primary">⭐ Pásate a Pro para seleccionar días específicos y rangos.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-[10px] text-muted-foreground">Desde</span>
-                    <input 
-                      type="date" 
-                      value={fechaInicio}
-                      onChange={(e) => setFechaInicio(e.target.value)}
-                      className="w-full bg-background border border-border/60 text-foreground text-xs rounded-lg p-2 focus:ring-1 focus:ring-primary transition"
-                      max={fechaHistorica || new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-muted-foreground">Hasta</span>
-                    <input 
-                      type="date" 
-                      value={fechaHistorica}
-                      onChange={(e) => setFechaHistorica(e.target.value)}
-                      className="w-full bg-background border border-border/60 text-foreground text-xs rounded-lg p-2 focus:ring-1 focus:ring-primary transition"
-                      min={fechaInicio}
-                      max={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
             <button 
               onClick={handleAnalyze}
               disabled={polygon.length < 3 || mutation.isPending}
@@ -1189,7 +1141,6 @@ export function MapPage() {
           focusFeature={focusFeature}
           userType={isPremiumPro ? "pro" : "visitante"}
           fechaInicio={fechaInicio}
-          fechaHistorica={fechaHistorica}
           selectedWildfireYear={selectedWildfireYear}
           className="h-full rounded-xl shadow-lg border border-border/60 overflow-hidden"
         />
