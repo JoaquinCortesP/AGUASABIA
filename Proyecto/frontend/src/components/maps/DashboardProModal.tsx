@@ -134,7 +134,7 @@ export function DashboardProModal({ onClose, analysisResult, fechaHistorica }: D
               <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                 <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
                   <span className="block text-slate-500 mb-1">NDVI Mean</span>
-                  <span className="text-xl font-bold text-white">{analysisResult?.modulos?.vegetacion?.datos?.ndvi_promedio |? "0.45"}</span>
+                  <span className="text-xl font-bold text-white">{analysisResult?.modulos?.vegetacion?.datos?.ndvi_promedio || "0.45"}</span>
                 </div>
                 <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
                   <span className="block text-slate-500 mb-1">ET0 (mm)</span>
@@ -195,7 +195,7 @@ export function DashboardProModal({ onClose, analysisResult, fechaHistorica }: D
                     <XAxis dataKey="fecha" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                     <YAxis yAxisId="left" stroke="#10b981" tick={{ fill: '#10b981' }} domain={['auto', 'auto']} />
                     <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" tick={{ fill: '#3b82f6' }} />
-                    <RechartsTooltip contentStyle=d{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }} />
                     <Legend />
                     <Line yAxisId="left" type="monotone" dataKey="NDVI" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                     <Line yAxisId="right" type="monotone" dataKey="Precipitación (mn)" stroke="#3b82f6" strokeWidth={2} />
