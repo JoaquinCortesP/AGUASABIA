@@ -125,9 +125,6 @@ export function MapPage() {
         modo: isPremiumPro ? "avanzado" : "resumen", // Determinado automáticamente
         guardar: !!user,
         modulos: ["agua", "clima", "territorio", "vegetacion", "riesgos", "suelo"],
-        fecha_inicio: isPremiumPro && fechaInicio ? fechaInicio : undefined,
-        fecha_historica: fechaHistorica || undefined,
-        fecha_fin: isPremiumPro && fechaHistorica ? fechaHistorica : undefined,
       }),
     onSuccess: (data) => {
       setAnalysisResult(data);
@@ -912,11 +909,21 @@ export function MapPage() {
     });
   }
 
-  // Capas eliminadas del listado lateral para optimización de rendimiento:
-  // - humedales
-  // - cuencas
-  // - incendios
-  // - sequia
+  if (activeLayers.includes("humedales")) {
+    layerItems["humedales"] = []; // No items for wetlands yet as it uses events
+  }
+
+  if (activeLayers.includes("cuencas")) {
+    layerItems["cuencas"] = []; // No items for basins yet
+  }
+
+  if (activeLayers.includes("incendios")) {
+    layerItems["incendios"] = []; // Handled by selectedWildfireYear
+  }
+
+  if (activeLayers.includes("sequia")) {
+    layerItems["sequia"] = []; // No items for drought yet
+  }
 
   if (activeLayers.includes("rios")) {
     layerItems["rios"] = (estacionesFiltradas || [])
@@ -1138,8 +1145,6 @@ export function MapPage() {
           onPlacingShapeChange={setPlacingShape}
           focusFeature={focusFeature}
           userType={isPremiumPro ? "pro" : "visitante"}
-          fechaInicio={fechaInicio}
-          fechaHistorica={fechaHistorica}
           selectedWildfireYear={selectedWildfireYear}
           className="h-full rounded-xl shadow-lg border border-border/60 overflow-hidden"
         />

@@ -122,8 +122,6 @@ interface TerritoryMapContainerProps {
   onPlacingShapeChange?: (shape: "square" | "rectangle" | "triangle" | null) => void;
   focusFeature?: { lat: number; lng: number; timestamp: number } | null;
   userType?: string;
-  fechaInicio?: string;
-  fechaHistorica?: string;
   selectedWildfireYear?: string;
 }
 
@@ -166,8 +164,6 @@ export function MapContainer({
   onPlacingShapeChange,
   focusFeature = null,
   userType = "visitante",
-  fechaInicio,
-  fechaHistorica,
   selectedWildfireYear,
 }: TerritoryMapContainerProps) {
   const positions = toLeafletLatLng(polygon);
@@ -220,9 +216,7 @@ export function MapContainer({
           const res = await api.get("/api/v1/territorio/incendios-historicos", {
             params: { 
               userType: userType, 
-              year: selectedWildfireYear || "2024",
-              startDate: fechaInicio,
-              endDate: fechaHistorica
+              year: selectedWildfireYear || "2024"
             }
           });
           setWildfiresGeoData(res.data);
@@ -232,7 +226,7 @@ export function MapContainer({
       };
       fetchWildfires();
     }
-  }, [activeLayers, userType, selectedWildfireYear, fechaInicio, fechaHistorica]);
+  }, [activeLayers, userType, selectedWildfireYear]);
 
   useEffect(() => {
     if (activeLayers.includes("acuiferos") && !acuiferosData) {
@@ -406,42 +400,6 @@ export function MapContainer({
           />
         )}
 
-        {/* Renderizado de Estaciones DGA (Ríos y Embalses) */}
-        {(activeLayers.includes("rios") || activeLayers.includes("embalses")) && estaciones && estaciones.length > 0 && (
-          <>
-            {estaciones.map((est, idx) => {
-              // Filtrar según capa seleccionada (básico)
-              const tipo = (est.tipo_estacion || "").toLowerCase();
-              const isRio = tipo.includes("fluvio") || tipo.includes("calidad");
-              const isEmbalse = tipo.includes("control") || tipo.includes("nivel");
-              
-              if (activeLayers.includes("rios") && !isRio && !activeLayers.includes("embalses")) return null;
-              if (activeLayers.includes("embalses") && !isEmbalse && !activeLayers.includes("rios")) return null;
-              
-              const p = est.point_wgs84;
-              if (!p || p.coordinates.length < 2) return null;
-              return (
-                <CircleMarker
-                  key={`est-${est.id}-${idx}`}
-                  center={[p.coordinates[1], p.coordinates[0]]}
-                  radius={5}
-                  pathOptions={{
-                    color: "white",
-                    weight: 1,
-                    fillColor: getEstacionColor(est.tipo_estacion),
-                    fillOpacity: 0.9,
-                  }}
-                >
-                  <Tooltip className="text-slate-800 font-semibold">
-                    <div className="font-bold text-blue-600 border-b border-blue-200 pb-1 mb-1">Estación DGA</div>
-                    {est.nom_estacion}<br />
-                    <span className="text-xs text-slate-500 font-normal">Tipo: {est.tipo_estacion}</span>
-                  </Tooltip>
-                </CircleMarker>
-              );
-            })}
-          </>
-        )}
 
         {/* Renderizado de Humedales Protegidos */}
         {activeLayers.includes("humedales") && <WetlandsLayer />}
