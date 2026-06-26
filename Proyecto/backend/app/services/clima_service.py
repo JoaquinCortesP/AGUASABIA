@@ -18,7 +18,7 @@ async def obtener_clima_diario(latitud: float, longitud: float, fecha_historica:
     params = {
         "latitude": latitud,
         "longitude": longitud,
-        "daily": "et0_fao_evapotranspiration,precipitation_sum,snowfall_sum,snow_depth",
+        "daily": "et0_fao_evapotranspiration,precipitation_sum,snowfall_sum",
         "timezone": "America/Santiago",
     }
     

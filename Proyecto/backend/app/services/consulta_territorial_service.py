@@ -130,11 +130,30 @@ async def analizar_consulta_territorial(
 
     fecha_analisis = payload.fecha_fin or payload.fecha_historica
     
-    clima = await obtener_clima_diario(
-        centroide["latitud"], 
-        centroide["longitud"], 
-        fecha_historica=fecha_analisis
-    )
+    try:
+        clima = await obtener_clima_diario(
+            centroide["latitud"], 
+            centroide["longitud"], 
+            fecha_historica=fecha_analisis
+        )
+    except Exception as e:
+        print(f"Error obteniendo clima (Open-Meteo): {e}")
+        from datetime import datetime
+        # Fallback dummy si falla Open-Meteo para no botar todo el análisis
+        clima = {
+            "fecha": datetime.fromisoformat(fecha_analisis or datetime.now().isoformat()[:10]),
+            "latitud": centroide["latitud"],
+            "longitud": centroide["longitud"],
+            "et0_mm": 0,
+            "precipitacion_mm": 0,
+            "acumulacion_nival_swe_cm": 0,
+            "profundidad_nieve_m": 0,
+            "sublimacion_eolica": False,
+            "hay_nieve_suelo": False,
+            "fuente": "Fallback Local",
+            "historico": bool(fecha_analisis),
+            "error_api": str(e)
+        }
 
     modulos: dict[str, dict[str, Any]] = {}
     if "clima" in payload.modulos:
@@ -159,9 +178,9 @@ async def analizar_consulta_territorial(
             },
             "fuentes": [
                 {
-                    "nombre": "Open-Meteo",
+                    "nombre": "Open-Meteo (o Fallback)",
                     "tipo": "climatica",
-                    "descripcion": "Forecast diario consultado desde backend.",
+                    "descripcion": f"Forecast diario consultado desde backend. {clima.get('error_api', '')}",
                     "url": "https://open-meteo.com/",
                 }
             ],

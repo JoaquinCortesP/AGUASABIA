@@ -122,6 +122,10 @@ interface TerritoryMapContainerProps {
   placingShape?: "square" | "rectangle" | "triangle" | null;
   onPlacingShapeChange?: (shape: "square" | "rectangle" | "triangle" | null) => void;
   focusFeature?: { lat: number; lng: number; timestamp: number } | null;
+  userType?: string;
+  fechaInicio?: string;
+  fechaHistorica?: string;
+  selectedWildfireYear?: string;
 }
 
 const getEstacionColor = (tipo: string) => {
@@ -162,6 +166,10 @@ export function MapContainer({
   placingShape = null,
   onPlacingShapeChange,
   focusFeature = null,
+  userType = "visitante",
+  fechaInicio,
+  fechaHistorica,
+  selectedWildfireYear,
 }: TerritoryMapContainerProps) {
   const positions = toLeafletLatLng(polygon);
   const [acuiferosData, setAcuiferosData] = useState<any>(null);
@@ -229,11 +237,16 @@ export function MapContainer({
   }, [activeLayers, basinsGeoData]);
 
   useEffect(() => {
-    if (activeLayers.includes("incendios") && !wildfiresGeoData) {
+    if (activeLayers.includes("incendios")) {
       const fetchWildfires = async () => {
         try {
           const res = await api.get("/api/v1/territorio/incendios-historicos", {
-            params: { userType: "visitante", year: "2024" }
+            params: { 
+              userType: userType, 
+              year: selectedWildfireYear || "2024",
+              startDate: fechaInicio,
+              endDate: fechaHistorica
+            }
           });
           setWildfiresGeoData(res.data);
         } catch (error) {
@@ -242,7 +255,7 @@ export function MapContainer({
       };
       fetchWildfires();
     }
-  }, [activeLayers, wildfiresGeoData]);
+  }, [activeLayers, userType, selectedWildfireYear, fechaInicio, fechaHistorica]);
 
   useEffect(() => {
     if (activeLayers.includes("acuiferos") && !acuiferosData) {
@@ -319,7 +332,7 @@ export function MapContainer({
             onChange={onPolygonChange}
           />
         ) : null}
-        <FitToGeometry polygon={polygon} area={area} />
+        <FitToGeometry area={area} />
         
         {/* Renderizado de Acuíferos GeoJSON */}
         {activeLayers.includes("acuiferos") && acuiferosData && (
@@ -629,19 +642,14 @@ export function MapContainer({
 }
 
 function FitToGeometry({
-  polygon,
   area,
 }: {
-  polygon: Coordinates[];
   area: AnalyzedArea | null | undefined;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (polygon.length > 0) {
-      const bounds = latLngBounds(toLeafletLatLng(polygon));
-      map.fitBounds(bounds, { padding: [50, 50] });
-    } else if (area?.bbox) {
+    if (area?.bbox) {
       const bounds = latLngBounds(
         [area.bbox.min_latitud, area.bbox.min_longitud],
         [area.bbox.max_latitud, area.bbox.max_longitud]
@@ -650,7 +658,7 @@ function FitToGeometry({
     } else if (area?.centroide) {
       map.setView([area.centroide.latitud, area.centroide.longitud], 12);
     }
-  }, [polygon, area, map]);
+  }, [area, map]);
 
   return null;
 }

@@ -1186,6 +1186,10 @@ export function MapPage() {
           placingShape={placingShape}
           onPlacingShapeChange={setPlacingShape}
           focusFeature={focusFeature}
+          userType={isPremiumPro ? "pro" : "visitante"}
+          fechaInicio={fechaInicio}
+          fechaHistorica={fechaHistorica}
+          selectedWildfireYear={selectedWildfireYear}
           className="h-full rounded-xl shadow-lg border border-border/60 overflow-hidden"
         />
 
