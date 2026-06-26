@@ -9,7 +9,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/ingest",
     tags=["Ingesta DGA"]
 )
 

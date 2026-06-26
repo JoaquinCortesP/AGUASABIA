@@ -5,17 +5,38 @@ from datetime import datetime, timedelta
 
 import ee
 
-# Inicia Earth Engine (Se asume que el usuario o el entorno ya corrió ee.Authenticate() y ee.Initialize() al arrancar FastAPI)
-# Si no está inicializado, intentaremos inicializarlo aquí (requiere variables de entorno o credenciales locales).
+from app.core.config import settings
+from google.oauth2 import service_account
+
+_EE_INITIALIZED = False
+
 def _init_ee():
+    global _EE_INITIALIZED
+    if _EE_INITIALIZED:
+        return
+
     try:
-        ee.Initialize()
-    except Exception:
-        try:
-            # Fallback for some local environments
-            ee.Initialize(project='aguasabia-project-id') # Placeholder project ID
-        except Exception as e:
-            raise RuntimeError(f"Fallo al inicializar Google Earth Engine: {e}")
+        if settings.EE_SERVICE_ACCOUNT_JSON and settings.EE_PROJECT_ID:
+            json_str = settings.EE_SERVICE_ACCOUNT_JSON
+            # Strip surrounding quotes if present (from .env file)
+            if json_str.startswith("'") and json_str.endswith("'"):
+                json_str = json_str[1:-1]
+            
+            # Parsear el JSON antes de reemplazar caracteres de control
+            credentials_dict = json.loads(json_str)
+            if "private_key" in credentials_dict:
+                credentials_dict["private_key"] = credentials_dict["private_key"].replace('\\n', '\n')
+            
+            creds = service_account.Credentials.from_service_account_info(
+                credentials_dict, scopes=['https://www.googleapis.com/auth/earthengine']
+            )
+            ee.Initialize(credentials=creds, project=settings.EE_PROJECT_ID)
+        else:
+            ee.Initialize()
+            
+        _EE_INITIALIZED = True
+    except Exception as e:
+        raise RuntimeError(f"Fallo al inicializar Google Earth Engine: {e}")
 
 def calcular_ndvi_sentinel3(latitud: float, longitud: float, wkt_polygon: Optional[str] = None, fecha_fin: Optional[str] = None) -> dict[str, Any]:
     """
@@ -69,15 +90,26 @@ def calcular_ndvi_sentinel3(latitud: float, longitud: float, wkt_polygon: Option
         # Tomamos la imagen más reciente (Gap-Filling temporal) o la mediana de la semana
         latest_image = s3_processed.median() # Usamos la mediana semanal para un Gap-Filling robusto (Composición libre de nubes)
         
+        red_scale = 0.00876539
+        nir_scale = 0.00493004
+        
+        latest_image_scaled = latest_image.addBands(
+            latest_image.select('Oa08_radiance').multiply(red_scale).rename('RED_scaled')
+        ).addBands(
+            latest_image.select('Oa17_radiance').multiply(nir_scale).rename('NIR_scaled')
+        )
+        
         # Extraemos el valor del píxel en la coordenada (o el promedio del polígono)
-        ndvi_value_dict = latest_image.select('NDVI').reduceRegion(
+        stats = latest_image_scaled.select(['NDVI', 'RED_scaled', 'NIR_scaled']).reduceRegion(
             reducer=ee.Reducer.mean(),
             geometry=roi,
             scale=300,
             maxPixels=1e9
         ).getInfo()
         
-        ndvi_val = ndvi_value_dict.get('NDVI')
+        ndvi_val = stats.get('NDVI')
+        red_val = stats.get('RED_scaled')
+        nir_val = stats.get('NIR_scaled')
         
         if ndvi_val is None:
             raise ValueError("No se encontraron píxeles libres de nubes en los últimos 7 días con Sentinel-3.")
@@ -134,13 +166,15 @@ def calcular_ndvi_sentinel3(latitud: float, longitud: float, wkt_polygon: Option
             
         return {
             "ndvi": float(ndvi_val),
+            "red_reflectance": float(red_val) if red_val is not None else None,
+            "nir_reflectance": float(nir_val) if nir_val is not None else None,
             "grilla_geojson": grilla_geojson,
             "fuente_satelital": "Sentinel-3 OLCI (Nivel 1B TOA)",
             "resolucion_espacial": "300 metros",
             "fecha_base_satelite": sensing_time_rango,
             "metadatos_informe": {
                 "explicacion_extraccion": "Datos de Radiancia extraídos de la colección COPERNICUS/S3/OLCI en Google Earth Engine. Se aplicó un filtro temporal (Gap-Filling) sobre una ventana de 7 días para eludir la nubosidad.",
-                "explicacion_calculo": "NDVI calculado utilizando la banda Oa08_radiance (Rojo, factor de escala: 0.00876539) y Oa17_radiance (NIR, factor de escala: 0.00493004). Nubes enmascaradas evaluando el bit 27 del quality_flags."
+                "explicacion_calculo": f"NDVI calculado utilizando la banda Oa08_radiance (Rojo, valor medido: {round(red_val, 4) if red_val is not None else 'N/A'}, factor de escala: 0.00876539) y Oa17_radiance (NIR, valor medido: {round(nir_val, 4) if nir_val is not None else 'N/A'}, factor de escala: 0.00493004). Nubes enmascaradas evaluando el bit 27 del quality_flags."
             }
         }
     except Exception as e:

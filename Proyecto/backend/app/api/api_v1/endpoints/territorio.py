@@ -479,18 +479,12 @@ async def get_incendios_historicos(
     """Proxy para extraer focos de incendios históricos desde IDE Minagri"""
     base_url = "https://esri.ciren.cl/server/rest/services/IDEMINAGRI/INCENDIOS/MapServer/0/query"
     
-    sql_where = "1=2" # Por defecto no devolver nada si no hay filtros válidos para evitar sobrecarga
-    if userType == 'visitante' and year:
-        sql_where = f"TEMPORADA LIKE '%{year}%'"
-    elif userType == 'pro':
-        if startDate and endDate:
-            sql_where = f"FECHA_INICIO >= '{startDate}' AND FECHA_INICIO <= '{endDate}'"
-        elif year:
-            sql_where = f"TEMPORADA LIKE '%{year}%'"
+    # Se descartó el selector de años en el mapa, mostramos todos los registros (1=1)
+    sql_where = "1=1"
 
     params = {
         "where": sql_where,
-        "outFields": "COMUNA,TEMPORADA,SUPERFICIE",
+        "outFields": "comuna,temporada,superficie,fh_inicio",
         "outSR": "4326",
         "f": "geojson"
     }

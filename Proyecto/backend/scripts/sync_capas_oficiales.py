@@ -69,7 +69,7 @@ async def fetch_layer_data(client: httpx.AsyncClient, service_name: str, out_fie
         
     logger.info(f"{len(object_ids)} registros en {service_name}. Descargando geometria...")
     
-    chunk_size = 500
+    chunk_size = 50
     chunks = [object_ids[i:i + chunk_size] for i in range(0, len(object_ids), chunk_size)]
     all_features = []
     
@@ -189,10 +189,10 @@ async def run_sync():
                         fecha_inicio=dt_ini,
                         fecha_fin=dt_fin,
                         region=attrs.get("REGION"),
-                        geom=f"SRID=4326;{geom.wkt}"
+                        geometria=f"SRID=4326;{geom.wkt}"
                     ).on_conflict_do_update(
                         index_elements=['id'],
-                        set_={'numero_decreto': str(attrs.get("NUM_DECRETO")), 'geom': f"SRID=4326;{geom.wkt}"}
+                        set_={'numero_decreto': str(attrs.get("NUM_DECRETO")), 'geometria': f"SRID=4326;{geom.wkt}"}
                     )
                     db.execute(stmt)
             db.commit()

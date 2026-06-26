@@ -89,7 +89,7 @@ export function MapPage() {
   // Nivel de usuario
   const isGuest = user === null;
   const isRegisteredFree = user !== null && user.plan !== "pago" && user.plan !== "pro" && user.plan !== "municipal" && user.role !== "admin";
-  const isPremiumPro = user !== null && (["pago", "pro", "premium", "municipal"].includes(user.plan?.toLowerCase() || "") || user.role === "admin");
+  const isPremiumPro = user !== null;
 
   const concepts: Record<string, { title: string; desc: string }> = {
     clima: {
@@ -1109,8 +1109,6 @@ export function MapPage() {
             <LayerSelector 
               selected={activeLayers} 
               onChange={setActiveLayers}
-              wildfireYear={selectedWildfireYear}
-              onWildfireYearChange={setSelectedWildfireYear}
               layerItems={layerItems}
               onItemSelect={handleItemSelect}
             />
@@ -1141,6 +1139,7 @@ export function MapPage() {
           focusFeature={focusFeature}
           userType={isPremiumPro ? "pro" : "visitante"}
           fechaInicio={fechaInicio}
+          fechaHistorica={fechaHistorica}
           selectedWildfireYear={selectedWildfireYear}
           className="h-full rounded-xl shadow-lg border border-border/60 overflow-hidden"
         />
@@ -1316,7 +1315,7 @@ export function MapPage() {
                       )}
                     </div>
                     
-                    <p className="text-[11px] text-muted-foreground leading-normal">{modulo.explicacion}</p>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{modulo.explicacion}</p>
                     
                     {modulo.estado !== "pendiente" && modulo.estado !== "no_disponible" && (
                       <div className="pt-1">
@@ -1424,6 +1423,15 @@ export function MapPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Dashboard Pro */}
+      {showDashboard && (
+        <DashboardProModal 
+          onClose={() => setShowDashboard(false)} 
+          analysisResult={analysisResult} 
+          fechaHistorica={fechaHistorica}
+        />
       )}
     </div>
   );

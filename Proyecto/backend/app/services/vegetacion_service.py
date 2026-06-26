@@ -28,6 +28,8 @@ def evaluar_modulo_vegetacion(latitud: float = None, longitud: float = None, wkt
             avanzado = {
                 "indices_calculados": ["NDVI"],
                 "formula": "(NIR - RED) / (NIR + RED)",
+                "red_reflectance": resultado_s3.get("red_reflectance"),
+                "nir_reflectance": resultado_s3.get("nir_reflectance"),
                 "fuente_tecnica": resultado_s3.get("fuente_satelital"),
                 "fecha_base_satelite": resultado_s3.get("fecha_base_satelite"),
                 "resolucion_espacial": resultado_s3.get("resolucion_espacial"),
@@ -46,6 +48,8 @@ def evaluar_modulo_vegetacion(latitud: float = None, longitud: float = None, wkt
             avanzado = {
                 "indices_calculados": ["NDVI"],
                 "formula": "(NIR - RED) / (NIR + RED)",
+                "red_reflectance": 0.150,
+                "nir_reflectance": 0.395,
                 "fuente_tecnica": "Fallback Local Simulado",
                 "metadatos_informe": {
                     "explicacion_extraccion": "Falló la autenticación con GEE. Datos generados aleatoriamente.",

@@ -5,6 +5,7 @@ from app.services.clima_service import (
     ClimaServiceError,
     ClimaServiceUnavailable,
     obtener_clima_diario,
+    obtener_clima_rango,
 )
 from app.services.geometry import calcular_centroide
 
@@ -41,3 +42,17 @@ async def read_clima_diario_poligono(payload: ClimaPoligonoRequest) -> dict:
 @router.post("/poligono", response_model=ClimaPoligonoResponse)
 async def read_clima_poligono(payload: ClimaPoligonoRequest) -> dict:
     return await read_clima_diario_poligono(payload)
+
+
+@router.get("/rango")
+async def read_clima_rango(
+    latitud: float = Query(..., ge=-90, le=90),
+    longitud: float = Query(..., ge=-180, le=180),
+    fecha_inicio: str = Query(...),
+    fecha_fin: str = Query(...),
+) -> list[dict]:
+    try:
+        return await obtener_clima_rango(latitud, longitud, fecha_inicio, fecha_fin)
+    except ClimaServiceError as exc:
+        raise _map_clima_error(exc)
+

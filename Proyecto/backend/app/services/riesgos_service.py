@@ -16,7 +16,7 @@ def evaluar_modulo_riesgos(clima: dict[str, Any] | None = None, ndvi_promedio: f
 
     if ndvi_promedio is not None:
         if ndvi_promedio < 0.2:
-            estado = "critico"
+            estado = "alto"
             titulo = "Riesgo de Sequía: Alto"
             explicacion = "El análisis geoespacial arroja un índice de vegetación (NDVI) excepcionalmente bajo (< 0.2). Esto indica escasa cobertura verde o suelo desnudo, un patrón compatible con condiciones de sequía severa en zonas no desérticas."
             riesgo_sequia = "Alto"

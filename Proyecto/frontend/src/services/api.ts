@@ -40,10 +40,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado o inválido
-      localStorage.removeItem("token");
-      window.dispatchEvent(new Event("auth:unauthorized"));
+      const token = localStorage.getItem("token");
+      // Solo desloguear si había un token y el endpoint requería autenticación
+      // (no borrar por endpoints públicos que devuelven 401 por falta de plan)
+      const url = error.config?.url || "";
+      const isAuthEndpoint = url.includes("/login") || url.includes("/register");
+      if (token && !isAuthEndpoint) {
+        // Verificar que el 401 sea por token inválido, no por permisos de plan
+        const detail = error.response?.data?.detail || "";
+        const isPlanRestriction = detail.includes("plan") || detail.includes("modo avanzado") || detail.includes("Mejora");
+        if (!isPlanRestriction) {
+          localStorage.removeItem("token");
+          window.dispatchEvent(new Event("auth:unauthorized"));
+        }
+      }
     }
     return Promise.reject(error);
   }
 );
+

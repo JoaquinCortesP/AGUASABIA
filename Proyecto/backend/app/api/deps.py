@@ -90,7 +90,8 @@ def get_current_usuario(
         )
 
     token_data = _decode_token(token)
-    if token_data.role not in ("usuario", "admin") or token_data.sub is None:
+    role = getattr(token_data, "role", None)
+    if role not in ("usuario", "admin", None) or token_data.sub is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token invalido",
@@ -130,10 +131,7 @@ def get_optional_usuario(
     except Exception:
         return None
 
-    if token_data.role not in ("usuario", "admin") or token_data.sub is None:
-        return None
-
-    if not token_data.sub.isdigit():
+    if not token_data.sub or not token_data.sub.isdigit():
         return None
 
     if token_data.role == "admin":
@@ -147,3 +145,4 @@ def get_optional_usuario(
     if not usuario or not usuario.is_active:
         return None
     return usuario
+

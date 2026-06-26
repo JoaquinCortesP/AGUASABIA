@@ -86,3 +86,85 @@ async def obtener_clima_diario(latitud: float, longitud: float, fecha_historica:
             "explicacion_calculo": "Evapotranspiración calculada mediante Penman-Monteith. Si hay nieve superficial, la pérdida térmica se identifica como sublimación eólica."
         }
     }
+
+
+async def obtener_clima_rango(
+    latitud: float,
+    longitud: float,
+    fecha_inicio: str,
+    fecha_fin: str
+) -> list[dict[str, Any]]:
+    """Obtiene series de tiempo de precipitación y ET0 para un rango de fechas"""
+    archive_url = OPEN_METEO_ARCHIVE_URL
+    forecast_url = OPEN_METEO_FORECAST_URL
+    
+    import datetime
+    today = datetime.date.today()
+    fin_date = datetime.date.fromisoformat(fecha_fin)
+    inicio_date = datetime.date.fromisoformat(fecha_inicio)
+    
+    # Si todo el rango es en el futuro (o hoy), usamos forecast
+    use_forecast = inicio_date >= today
+    
+    url = forecast_url if use_forecast else archive_url
+    params = {
+        "latitude": latitud,
+        "longitude": longitud,
+        "daily": "et0_fao_evapotranspiration,precipitation_sum",
+        "timezone": "America/Santiago",
+    }
+    
+    if use_forecast:
+        delta = fin_date - today
+        days = max(1, min(16, delta.days + 1))
+        params["forecast_days"] = days
+    else:
+        yesterday = today - datetime.timedelta(days=1)
+        actual_fin = min(fin_date, yesterday)
+        params["start_date"] = fecha_inicio
+        params["end_date"] = actual_fin.isoformat()
+        
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            payload = response.json()
+    except Exception as exc:
+        print(f"Error consultando rango Open-Meteo: {exc}")
+        # Fallback usando forecast con los últimos 92 días si archive falla
+        try:
+            params_fc = {
+                "latitude": latitud,
+                "longitude": longitud,
+                "daily": "et0_fao_evapotranspiration,precipitation_sum",
+                "timezone": "America/Santiago",
+                "past_days": 92
+            }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(forecast_url, params=params_fc)
+                response.raise_for_status()
+                payload = response.json()
+        except Exception as fc_exc:
+            raise ClimaServiceError("No se pudo obtener información climática histórica") from fc_exc
+
+    daily = payload.get("daily") or {}
+    times = daily.get("time") or []
+    et0_values = daily.get("et0_fao_evapotranspiration") or []
+    precipitation_values = daily.get("precipitation_sum") or []
+    
+    registros = []
+    # Filtrar por rango de fechas si usamos el fallback de past_days
+    for i in range(len(times)):
+        t_date = datetime.date.fromisoformat(times[i])
+        if inicio_date <= t_date <= fin_date:
+            et0 = float(et0_values[i] or 0) if i < len(et0_values) else 0.0
+            prec = float(precipitation_values[i] or 0) if i < len(precipitation_values) else 0.0
+            registros.append({
+                "fecha": times[i],
+                "precipitacion": prec,
+                "et0": et0,
+                "balance": round(prec - et0, 2)
+            })
+        
+    return registros
+

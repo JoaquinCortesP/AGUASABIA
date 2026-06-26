@@ -34,7 +34,8 @@ class VisitorDailyLimitExceeded(Exception):
 
 
 def usuario_tiene_modo_avanzado(usuario: Usuario | None) -> bool:
-    return bool(usuario and usuario.plan in PLANES_CON_MODO_AVANZADO)
+    # Habilitar el modo avanzado para todos los usuarios registrados
+    return usuario is not None
 
 
 def _chile_day_bounds_utc() -> tuple[datetime, datetime]:
@@ -224,24 +225,6 @@ async def analizar_consulta_territorial(
 
     if "suelo" in payload.modulos:
         modulos["suelo"] = modulo_bloqueado_extranjero if fuera_de_chile else await evaluar_modulo_suelo(centroide["latitud"], centroide["longitud"], avanzado_habilitado)
-
-    if avanzado_habilitado:
-        # Añadir Análisis Total y Metadatos para Pro
-        modulos["analisis_total"] = {
-            "estado": "informativo",
-            "titulo": "Análisis Técnico Total",
-            "explicacion": "Informe metodológico integral sobre la recolección y cálculo de datos.",
-            "datos": {
-                "fecha_inicio_rango": payload.fecha_inicio,
-                "fecha_fin_rango": fecha_analisis,
-                "nota": "Los datos representan la recolección del período seleccionado."
-            },
-            "fuentes": [],
-            "avanzado": {
-                "metodologia": "Los cálculos se obtienen cruzando bases de datos climáticas (Open-Meteo ERA5), edafológicas (SoilGrids) y espectrales (Sentinel-3 OLCI). Todo el proceso de abstracción, enmascaramiento de nubes y gap-filling se procesa de forma nativa asegurando precisión científica."
-            },
-            "avanzado_restringido": False
-        }
 
     modulos = {
         nombre: _serializar_modulo(modulo, avanzado_habilitado)

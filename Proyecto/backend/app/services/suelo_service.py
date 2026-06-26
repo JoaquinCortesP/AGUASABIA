@@ -12,8 +12,8 @@ async def evaluar_modulo_suelo(latitud: float, longitud: float, avanzado_habilit
     url = f"https://rest.isric.org/soilgrids/v2.0/properties/query?lon={longitud}&lat={latitud}&property=clay&property=sand&property=silt&property=phh2o&property=nitrogen"
     success = False
     try:
-        # 6.0s timeout to make sure it doesn't block forever, but enough for SoilGrids
-        async with httpx.AsyncClient(timeout=6.0) as client:
+        # 15.0s timeout - SoilGrids can be slow
+        async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(url)
             if resp.status_code == 200:
                 data = resp.json()

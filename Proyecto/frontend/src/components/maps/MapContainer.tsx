@@ -5,7 +5,6 @@ import {
   Polygon,
   Polyline,
   TileLayer,
-  WMSTileLayer,
   Tooltip,
   useMap,
   GeoJSON,
@@ -13,7 +12,7 @@ import {
   Marker,
   useMapEvents,
 } from "react-leaflet";
-import { latLngBounds, type LatLngExpression, icon } from "leaflet";
+import { latLngBounds, type LatLngExpression, icon, circleMarker } from "leaflet";
 import { PolygonDrawer } from "@/components/maps/PolygonDrawer";
 import { toLeafletLatLng } from "@/lib/leaflet/geo";
 import { cn } from "@/lib/utils/cn";
@@ -192,47 +191,25 @@ export function MapContainer({
 
   useEffect(() => {
     if (activeLayers.includes("sequia") && !droughtGeoData) {
-      const fetchDroughtDecrees = async () => {
-        const url = "https://rest-sit.mop.gob.cl/arcgis/rest/services/DGA/Decretos_Escasez_Hidrica/MapServer/0/query";
-        const queryParams = new URLSearchParams({
-          where: "1=1",
-          outFields: "ID_IDE",
-          outSR: "4326",
-          f: "geojson",
-          returnGeometry: "true"
+      api.get("/api/v1/dga/decretos-escasez")
+        .then((res) => {
+          setDroughtGeoData(res.data);
+        })
+        .catch((err) => {
+          console.error("Error cargando decretos escasez:", err);
         });
-        try {
-          const res = await fetch(`${url}?${queryParams.toString()}`);
-          const geoJSON = await res.json();
-          setDroughtGeoData(geoJSON);
-        } catch (error) {
-          console.error("Fallo al conectar con el SIT del MOP", error);
-        }
-      };
-      fetchDroughtDecrees();
     }
   }, [activeLayers, droughtGeoData]);
 
   useEffect(() => {
     if (activeLayers.includes("cuencas") && !basinsGeoData) {
-      const fetchBasins = async () => {
-        const url = "https://ideserver.sma.gob.cl/arcgis/rest/services/IDE/Recursos_hidricos_glaciares/MapServer/10/query";
-        const queryParams = new URLSearchParams({
-          where: "1=1",
-          outFields: "NOM_CUEN",
-          outSR: "4326",
-          geometryPrecision: "3",
-          f: "geojson"
+      api.get("/api/v1/dga/cuencas")
+        .then((res) => {
+          setBasinsGeoData(res.data);
+        })
+        .catch((err) => {
+          console.error("Error cargando cuencas DGA:", err);
         });
-        try {
-          const res = await fetch(`${url}?${queryParams.toString()}`);
-          const data = await res.json();
-          setBasinsGeoData(data);
-        } catch (error) {
-          console.error("Error al cargar cuencas SMA", error);
-        }
-      };
-      fetchBasins();
     }
   }, [activeLayers, basinsGeoData]);
 
@@ -337,7 +314,7 @@ export function MapContainer({
         {/* Renderizado de Acuíferos GeoJSON */}
         {activeLayers.includes("acuiferos") && acuiferosData && (
           <GeoJSON 
-            key={`acuiferos-${fechaHistorica || 'current'}`}
+            key={`acuiferos-${acuiferosData?.features?.length || 0}`}
             data={acuiferosData}
             style={{
               color: "#3b82f6",
@@ -386,13 +363,17 @@ export function MapContainer({
         {/* Renderizado de Incendios CONAF (Históricos) */}
         {activeLayers.includes("incendios") && wildfiresGeoData && (
           <GeoJSON 
-            key={`incendios-${fechaHistorica || 'current'}`}
+            key={`incendios-${wildfiresGeoData?.features?.length || 0}`}
             data={wildfiresGeoData} 
-            style={{
-              color: "#ea580c",
-              weight: 2,
-              fillOpacity: 0.6,
-              fillColor: "#ef4444"
+            pointToLayer={(feature, latlng) => {
+              return circleMarker(latlng, {
+                radius: 6,
+                fillColor: "#ef4444",
+                color: "#ea580c",
+                weight: 1.5,
+                opacity: 1,
+                fillOpacity: 0.8
+              });
             }}
             onEachFeature={(feature, layer) => {
               if (feature.properties) {
@@ -406,23 +387,10 @@ export function MapContainer({
           />
         )}
 
-        {/* Capa de Incendios Activos (NASA FIRMS - WMS) */}
-        {activeLayers.includes("incendios") && (
-          <WMSTileLayer
-            url="https://gibs.earthdata.nasa.gov/twms/epsg4326/best/twms.cgi"
-            layers="MODIS_Aqua_CorrectedReflectance_TrueColor" // O la capa térmica VIIRS
-            format="image/png"
-            transparent={true}
-            version="1.1.1"
-            attribution="NASA EOSDIS GIBS"
-            opacity={0.7}
-          />
-        )}
-
         {/* Renderizado de Sequía Crítica (Decretos MOP) */}
         {activeLayers.includes("sequia") && droughtGeoData && (
           <GeoJSON 
-            key={`sequia-${fechaHistorica || 'current'}`}
+            key={`sequia-${droughtGeoData?.features?.length || 0}`}
             data={droughtGeoData} 
             style={{
               color: "#dc2626",
@@ -432,9 +400,8 @@ export function MapContainer({
               dashArray: "4 4"
             }}
             onEachFeature={(feature, layer) => {
-              if (feature.properties && feature.properties.ID_IDE) {
-                layer.bindTooltip(`Decreto Escasez Hídrica DGA (ID: ${feature.properties.ID_IDE})`, { className: "text-slate-800 font-semibold" });
-              }
+              const num = feature.properties?.numero_decreto || feature.properties?.ID_IDE || "Activo";
+              layer.bindTooltip(`Decreto Escasez Hídrica DGA (N°: ${num})`, { className: "text-slate-800 font-semibold" });
             }}
           />
         )}
@@ -482,7 +449,7 @@ export function MapContainer({
         {/* Renderizado de Cuencas Hidrográficas SMA */}
         {activeLayers.includes("cuencas") && basinsGeoData && (
           <GeoJSON 
-            key={`cuencas-${fechaHistorica || 'current'}`}
+            key={`cuencas-${basinsGeoData?.features?.length || 0}`}
             data={basinsGeoData} 
             style={{
               color: "#4f46e5",
@@ -492,9 +459,8 @@ export function MapContainer({
               dashArray: "3 3"
             }}
             onEachFeature={(feature, layer) => {
-              if (feature.properties && feature.properties.NOM_CUEN) {
-                layer.bindTooltip(`Cuenca: ${feature.properties.NOM_CUEN}`, { className: "text-slate-800 font-semibold" });
-              }
+              const name = feature.properties?.nombre || feature.properties?.NOM_CUEN || "Cuenca DGA";
+              layer.bindTooltip(`Cuenca: ${name}`, { className: "text-slate-800 font-semibold" });
             }}
           />
         )}
@@ -705,7 +671,15 @@ function FitToGeometry({
   const map = useMap();
 
   useEffect(() => {
-    // Zoom automático desactivado por solicitud del usuario
+    if (area?.bbox) {
+      const bounds = latLngBounds(
+        [area.bbox.min_latitud, area.bbox.min_longitud],
+        [area.bbox.max_latitud, area.bbox.max_longitud]
+      );
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else if (area?.centroide) {
+      map.setView([area.centroide.latitud, area.centroide.longitud], 14);
+    }
   }, [area, map]);
 
   return null;
