@@ -26,7 +26,7 @@ export const territorioApi = {
   },
 
   getEstaciones: async (limit: number = 5000): Promise<any> => {
-    const response = await api.get<any>(`/api/v1/dga-ingest/ingest/estaciones?limit=${limit}`);
+    const response = await api.get<any>(`/api/v1/dga-ingest/estaciones?limit=${limit}`);
     return response.data;
   }
 };

@@ -337,6 +337,7 @@ export function MapContainer({
         {/* Renderizado de Acuíferos GeoJSON */}
         {activeLayers.includes("acuiferos") && acuiferosData && (
           <GeoJSON 
+            key={`acuiferos-${fechaHistorica || 'current'}`}
             data={acuiferosData}
             style={{
               color: "#3b82f6",
@@ -353,7 +354,7 @@ export function MapContainer({
                   <div class="leading-normal">${name}</div>
                   ${region ? `<div class="text-[10px] text-muted-foreground mt-0.5">${region}</div>` : ""}
                 </div>`,
-                { sticky: true, direction: "top" }
+                { sticky: true, direction: "top", className: "text-slate-800" }
               );
             }}
           />
@@ -385,6 +386,7 @@ export function MapContainer({
         {/* Renderizado de Incendios CONAF (Históricos) */}
         {activeLayers.includes("incendios") && wildfiresGeoData && (
           <GeoJSON 
+            key={`incendios-${fechaHistorica || 'current'}`}
             data={wildfiresGeoData} 
             style={{
               color: "#ea580c",
@@ -394,7 +396,7 @@ export function MapContainer({
             }}
             onEachFeature={(feature, layer) => {
               if (feature.properties) {
-                layer.bindTooltip(`Incendio (${feature.properties.TEMPORADA}) - Comuna: ${feature.properties.COMUNA} - Sup: ${feature.properties.SUPERFICIE} ha`);
+                layer.bindTooltip(`Incendio (${feature.properties.TEMPORADA}) - Comuna: ${feature.properties.COMUNA} - Sup: ${feature.properties.SUPERFICIE} ha`, { className: "text-slate-800 font-semibold" });
               }
             }}
           />
@@ -416,6 +418,7 @@ export function MapContainer({
         {/* Renderizado de Sequía Crítica (Decretos MOP) */}
         {activeLayers.includes("sequia") && droughtGeoData && (
           <GeoJSON 
+            key={`sequia-${fechaHistorica || 'current'}`}
             data={droughtGeoData} 
             style={{
               color: "#dc2626",
@@ -426,7 +429,7 @@ export function MapContainer({
             }}
             onEachFeature={(feature, layer) => {
               if (feature.properties) {
-                layer.bindTooltip(`Decreto Escasez Hídrica DGA (ID: ${feature.properties.ID_IDE})`);
+                layer.bindTooltip(`Decreto Escasez Hídrica DGA (ID: ${feature.properties.ID_IDE})`, { className: "text-slate-800 font-semibold" });
               }
             }}
           />
@@ -438,6 +441,7 @@ export function MapContainer({
         {/* Renderizado de Cuencas Hidrográficas SMA */}
         {activeLayers.includes("cuencas") && basinsGeoData && (
           <GeoJSON 
+            key={`cuencas-${fechaHistorica || 'current'}`}
             data={basinsGeoData} 
             style={{
               color: "#4f46e5",
@@ -448,7 +452,7 @@ export function MapContainer({
             }}
             onEachFeature={(feature, layer) => {
               if (feature.properties && feature.properties.NOM_CUEN) {
-                layer.bindTooltip(`Cuenca: ${feature.properties.NOM_CUEN}`);
+                layer.bindTooltip(`Cuenca: ${feature.properties.NOM_CUEN}`, { className: "text-slate-800 font-semibold" });
               }
             }}
           />
@@ -615,7 +619,7 @@ export function MapContainer({
                   <h4 className="font-bold text-sm mb-1 leading-tight text-slate-900 dark:text-white">
                     {feature.properties.nombre}
                   </h4>
-                  <p className="text-xs leading-normal">
+                  <p className="text-xs leading-normal mb-1">
                     <span className="font-semibold text-slate-500 dark:text-slate-400">Código:</span> {feature.properties.cod_estacion}<br />
                     <span className="font-semibold text-slate-500 dark:text-slate-400">Tipo:</span>{" "}
                     <span
@@ -630,6 +634,16 @@ export function MapContainer({
                       {tipo}
                     </span>
                   </p>
+                  {(tipo.toLowerCase().includes("control") || tipo.toLowerCase().includes("nivel") || tipo.toLowerCase().includes("embalse") || tipo.toLowerCase().includes("lago")) && (
+                    <div className="mt-2 pt-2 border-t border-slate-700">
+                      <span className="text-xs font-semibold text-amber-500 block mb-1">
+                        💧 Volumen/Nivel:
+                      </span>
+                      <span className="text-[10px] text-slate-400 italic block">
+                        Fechas disponibles proximamente. . . .
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Tooltip>
             </CircleMarker>

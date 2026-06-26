@@ -3,59 +3,8 @@ from typing import Any
 from shapely.wkt import loads
 from shapely.geometry import box, mapping
 
-def _generar_grilla_ndvi(wkt_polygon: str, n_cols: int = 10, n_rows: int = 10) -> dict[str, Any]:
-    """
-    Genera una grilla vectorial aproximada sobre el bbox del poligono para simular un mapa de NDVI.
-    Retorna un GeoJSON FeatureCollection.
-    """
-    try:
-        poly = loads(wkt_polygon)
-        minx, miny, maxx, maxy = poly.bounds
-        dx = (maxx - minx) / n_cols
-        dy = (maxy - miny) / n_rows
-        
-        features = []
-        # Para dar coherencia, usamos un seeder determinista basado en el area
-        random.seed(int(poly.area * 1000000))
-        
-        for i in range(n_cols):
-            for j in range(n_rows):
-                b_minx = minx + i * dx
-                b_maxx = minx + (i + 1) * dx
-                b_miny = miny + j * dy
-                b_maxy = miny + (j + 1) * dy
-                grid_cell = box(b_minx, b_miny, b_maxx, b_maxy)
-                
-                if poly.intersects(grid_cell):
-                    cell_poly = poly.intersection(grid_cell)
-                    # Simular NDVI entre 0.1 y 0.85
-                    ndvi_val = random.uniform(0.1, 0.85)
-                    # Asignar color (Rojo->Déficit, Verde->Sano)
-                    if ndvi_val < 0.3:
-                        color = "#dc2626" # red-600
-                    elif ndvi_val < 0.5:
-                        color = "#f59e0b" # amber-500
-                    elif ndvi_val < 0.7:
-                        color = "#84cc16" # lime-500
-                    else:
-                        color = "#16a34a" # green-600
-                        
-                    features.append({
-                        "type": "Feature",
-                        "geometry": mapping(cell_poly),
-                        "properties": {
-                            "ndvi": round(ndvi_val, 3),
-                            "color": color
-                        }
-                    })
-                    
-        return {
-            "type": "FeatureCollection",
-            "features": features
-        }
-    except Exception as e:
-        print(f"Error generando grilla NDVI: {e}")
-        return {"type": "FeatureCollection", "features": []}
+# _generar_grilla_ndvi (simulado) ha sido eliminado para usar datos 100% reales de GEE.
+
 
 
 from app.services.gee_sentinel3_service import calcular_ndvi_sentinel3
@@ -72,15 +21,17 @@ def evaluar_modulo_vegetacion(latitud: float = None, longitud: float = None, wkt
     fuentes = []
     
     if avanzado_habilitado and latitud and longitud:
-        resultado_s3 = calcular_ndvi_sentinel3(latitud, longitud, fecha_fin)
+        resultado_s3 = calcular_ndvi_sentinel3(latitud, longitud, wkt_polygon, fecha_fin)
         
         if not resultado_s3.get("error"):
             ndvi_promedio = resultado_s3.get("ndvi")
             avanzado = {
                 "indices_calculados": ["NDVI"],
+                "formula": "(NIR - RED) / (NIR + RED)",
                 "fuente_tecnica": resultado_s3.get("fuente_satelital"),
                 "fecha_base_satelite": resultado_s3.get("fecha_base_satelite"),
                 "resolucion_espacial": resultado_s3.get("resolucion_espacial"),
+                "grilla_ndvi_geojson": resultado_s3.get("grilla_geojson"),
                 "metadatos_informe": resultado_s3.get("metadatos_informe")
             }
             fuentes.append({

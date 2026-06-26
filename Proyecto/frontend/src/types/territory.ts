@@ -53,6 +53,8 @@ export interface TerritoryAnalysisRequest {
   nombre?: string;
   cliente_anonimo_id?: string;
   fecha_historica?: string;
+  fecha_inicio?: string;
+  fecha_fin?: string;
   modulos: ModuleName[];
 }
 
