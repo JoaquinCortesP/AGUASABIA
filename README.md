@@ -6,32 +6,32 @@ El enfoque del proyecto es entregar una **explicación clara para usuarios no t�
 
 ## 🚀 Módulos Funcionales (Estado Actual)
 
-- **Territorio**: Recepción de polígonos dibujados por el usuario, cálculo de área y centroides matemáticos mediante **PostGIS**.
-- **Clima**: Consumo de Open-Meteo para inyectar datos de temperatura y precipitaciones.
-- **Agua**: Cruce espacial con capas oficiales de la Dirección General de Aguas (DGA) para cuencas y decretos de escasez hídrica (`ST_Intersects`).
-- **Vegetación y Riesgos**: Integración con **Google Earth Engine (Sentinel-2)** para calcular el índice NDVI y anomalías térmicas *(Actualmente en Preparación / Desarrollo)*.
-- **Usuarios**: Autenticación JWT, verificación de correo simulada, guardado de consultas y restricción de "Modo Avanzado" mediante roles (`plan='pago'`).
-- **Admin**: Acceso interno a métricas de uso del sistema.
-- **Automatización [En Preparación]**: Tareas en segundo plano (Celery + Redis) configuradas para sincronización de datos nocturnos en despliegue nube.
+- **Territorio**: Recepción de polígonos dibujados por el usuario, cálculo de área y centroides matemáticos mediante **PostGIS** con envolturas de seguridad `ST_MakeValid`.
+- **Clima y Balance Hídrico**: Consumo en tiempo real e histórico de Open-Meteo (modelos ERA5 y evapotranspiración de referencia FAO-56 Penman-Monteith) en base al centroide del predio.
+- **Agua (Capas Oficiales DGA)**: Cruce espacial en tiempo real (`ST_Intersects`) con capas oficiales de la Dirección General de Aguas para Acuíferos Protegidos, Áreas de Restricción, Zonas de Prohibición, Cuencas Hidrográficas y Decretos de Escasez Hídrica.
+- **Vegetación (Teledetección Satelital)**: Integración activa con **Google Earth Engine (Sentinel-3 OLCI)** para descargar y calcular el índice NDVI y retornar reflectancias espectrales Roja (RED, Oa08) e Infrarroja Cercana (NIR, Oa17) reales de tu terreno.
+- **Dashboard Pro (Registro Hídrico)**: Modal avanzado interactivo con evolución gráfica Recharts de lluvia vs ET0, estimaciones de vigor vegetal, tabla de resumen agrupada cada 7 días, alertas semánticas y calculadora matemática de NDVI en tiempo real.
+- **Usuarios y Seguridad**: Autenticación JWT mediante hashing BCrypt, roles (`admin` / `usuario` con planes `visitante` / `pro`) y control de tasa de solicitudes (rate limiting).
+- **Orquestación y Automatización**: Tareas en segundo plano (Celery + Redis) preparadas para sincronización de catastro e ingestas espaciales, y emulación local vía `docker-compose`.
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
 **Backend:**
-- **Python / FastAPI**: Framework de alto rendimiento.
-- **PostgreSQL + PostGIS**: Base de datos relacional y motor geoespacial.
-- **SQLAlchemy + Alembic**: ORM y migraciones.
-- **Celery + Redis**: Tareas asíncronas y periódicas.
-- **Earth Engine API**: Conexión satelital.
+- **Python / FastAPI**: API de alto rendimiento con inyección de dependencias.
+- **PostgreSQL + PostGIS**: Almacenamiento relacional y operaciones topológicas espaciales.
+- **SQLAlchemy + Alembic**: ORM y versionamiento de base de datos.
+- **Celery + Redis**: Tareas en segundo plano y almacenamiento de brokers.
+- **Earth Engine API (Google Cloud)**: Procesamiento satelital remoto.
 
 **Frontend:**
-- **React 19 + TypeScript**: Interfaz de usuario declarativa y tipada.
-- **Vite**: Empaquetador ultrarrápido.
-- **React-Leaflet**: Renderizado de mapas interactivos y dibujo de polígonos.
-- **Zustand**: Manejo de estado global.
-- **Tailwind CSS + Lucide**: Estilos modernos e íconos.
-- **Recharts**: Visualización de gráficos estadísticos en el "Modo Avanzado".
+- **React 19 + TypeScript**: Desarrollo UI modular con tipado seguro.
+- **Vite**: Servidor de desarrollo HMR ultrarrápido.
+- **React-Leaflet + Leaflet**: Renderizado interactivo y dibujo vectorial.
+- **Zustand**: Gestión ligera y eficiente de estado.
+- **Tailwind CSS + Lucide Icons**: Diseño responsive premium.
+- **Recharts**: Gráficos interactivos de líneas, barras y compuestos.
 
 ---
 
@@ -92,11 +92,25 @@ npm run dev
 ```
 La web estará disponible en: `http://localhost:5173` (o la URL que te indique la consola).
 
-### 5. Levantar Tareas Asíncronas (Celery) - Opcional
-Para probar la automatización de actualizaciones climáticas:
-1. Levantar **Redis** (En Windows usando Docker: `docker run -p 6379:6379 -d redis`).
-2. Levantar el **Worker**: `celery -A app.core.celery_app worker --loglevel=info`
-3. Levantar el **Programador (Beat)**: `celery -A app.core.celery_app beat --loglevel=info`
+### 5. Levantar Entorno Orquestado Completo (Docker Compose)
+Si prefieres emular el stack de producción o no deseas configurar PostgreSQL/PostGIS a mano, puedes levantar el backend al completo con Docker Compose:
+1. Asegúrate de tener Docker corriendo en tu sistema.
+2. Ejecuta en la raíz del monorepo:
+   ```powershell
+   docker compose up --build
+   ```
+   Esto levantará automáticamente:
+   - PostgreSQL (PostGIS) expuesto en el puerto `5432`.
+   - Redis en el puerto `6379`.
+   - API de FastAPI en el puerto `8000` (con auto-reload activo para desarrollo).
+   - Celery Worker consumiendo tareas asíncronas de fondo.
+
+---
+
+## ☁️ Despliegue en la Nube (Railway)
+
+La arquitectura de este monorepo está preparada para su despliegue y auto-detección en **Railway** (usando variables dinámicas de entorno y el Dockerfile del backend).
+👉 Para ver las instrucciones detalladas del despliegue en la nube, consulta el archivo: [Guía de Despliegue en Railway (Paso a Paso)](file:///C:/Users/Joaqu/.gemini/antigravity/brain/ca9a5c68-7ab8-4453-a24b-2f32480da578/walkthrough.md).
 
 ---
 
