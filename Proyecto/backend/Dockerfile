@@ -15,6 +15,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el código del backend al contenedor
 COPY . .
 
+# Crear un usuario sin privilegios y cambiar los permisos de la carpeta de trabajo
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+
 # Exponer el puerto por defecto de FastAPI
 EXPOSE 8000
 
