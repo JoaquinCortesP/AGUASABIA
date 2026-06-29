@@ -479,7 +479,7 @@ export function MapPage() {
 
     switch (moduloKey) {
       case "clima": {
-        const { fecha, precipitacion_mm, et0_mm } = datos;
+        const { fecha, precipitacion_mm, precipitacion_7d_mm, et0_mm } = datos;
 
         return (
           <div className="space-y-3 mt-2">
@@ -489,6 +489,9 @@ export function MapPage() {
                 <span className="text-base font-bold text-sky-500 flex items-center gap-1 mt-1">
                   🌧️ {precipitacion_mm ?? 0} mm
                 </span>
+                {precipitacion_7d_mm !== undefined && (
+                  <span className="text-[9px] text-muted-foreground block mt-0.5">Últimos 7 días: {precipitacion_7d_mm} mm</span>
+                )}
               </div>
               <div className="bg-background/60 p-2.5 rounded-lg border border-border/50">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-semibold">Evaporación</span>

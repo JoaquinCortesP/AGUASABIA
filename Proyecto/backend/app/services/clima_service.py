@@ -28,6 +28,7 @@ async def obtener_clima_diario(latitud: float, longitud: float, fecha_historica:
         params["end_date"] = fecha_historica
     else:
         params["forecast_days"] = 1
+        params["past_days"] = 7
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -54,31 +55,33 @@ async def obtener_clima_diario(latitud: float, longitud: float, fecha_historica:
     if not fechas or not et0_values or not precipitation_values:
         raise ClimaServiceError("Open-Meteo devolvió una respuesta incompleta")
 
-    et0 = float(et0_values[0] or 0)
-    precipitacion = float(precipitation_values[0] or 0)
-    snowfall = float(snowfall_values[0] or 0) if snowfall_values else 0.0
-    snow_depth = float(snow_depth_values[0] or 0) if snow_depth_values else 0.0
-
-    # Lógica de auditoría biofísica
-    # Si hay nieve y la precipitación es cero o baja, la precipitación en realidad cayó como nieve (SWE)
-    lluvia_liquida = precipitacion
-    acumulacion_nival_swe = snowfall
+    # Si pedimos past_days=7 y forecast_days=1, el array tiene 8 elementos.
+    # El elemento de HOY o de la fecha_historica es el ultimo (index -1).
+    et0 = float(et0_values[-1] or 0)
+    precipitacion = float(precipitation_values[-1] or 0)
+    snowfall = float(snowfall_values[-1] or 0) if snowfall_values else 0.0
+    snow_depth = float(snow_depth_values[-1] or 0) if snow_depth_values else 0.0
     
+    # Calculamos el acumulado de precipitacion de los dias anteriores a hoy (hasta 7 dias)
+    # Excluimos el dia actual (-1)
+    precip_7d = sum(float(p or 0) for p in precipitation_values[:-1]) if len(precipitation_values) > 1 else 0.0
+
     # Sublimación eólica: Si hay nieve en el suelo (snow_depth > 0) y hay ET0, gran parte es sublimación
     sublimacion = False
     if snow_depth > 0 and et0 > 0:
         sublimacion = True
 
     return {
-        "fecha_recoleccion": date.fromisoformat(fechas[0]),
+        "fecha_recoleccion": date.fromisoformat(fechas[-1]),
         "latitud": latitud,
         "longitud": longitud,
         "et0_mm": et0,
-        "precipitacion_mm": lluvia_liquida,
-        "acumulacion_nival_swe_cm": acumulacion_nival_swe,
+        "precipitacion_mm": precipitacion,
+        "precipitacion_7d_mm": precip_7d,
+        "acumulacion_nival_swe_cm": snowfall,
         "profundidad_nieve_m": snow_depth,
         "sublimacion_eolica": sublimacion,
-        "hay_nieve_suelo": snow_depth > 0 or acumulacion_nival_swe > 0,
+        "hay_nieve_suelo": snow_depth > 0 or snowfall > 0,
         "fuente": "Open-Meteo Archive" if fecha_historica else "Open-Meteo Forecast",
         "historico": bool(fecha_historica),
         "metadatos_informe": {

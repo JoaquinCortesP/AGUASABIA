@@ -24,6 +24,30 @@ async def obtener_comuna_por_coordenadas(lat: float, lng: float) -> str:
         print(f"Error reverse geocoding comuna: {e}")
     return "la región seleccionada"
 
+async def es_territorio_chileno(lat: float, lng: float) -> bool:
+    """
+    Realiza una consulta a Nominatim para verificar si las coordenadas pertenecen a Chile.
+    """
+    try:
+        # Usamos zoom=3 para que devuelva solo el país (mas rápido)
+        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lng}&format=json&zoom=3"
+        async with httpx.AsyncClient() as client:
+            headers = {"User-Agent": "AguaSabia/1.0"}
+            response = await client.get(url, headers=headers, timeout=3.0)
+            if response.status_code == 200:
+                data = response.json()
+                country = data.get("address", {}).get("country", "").lower()
+                if "chile" in country:
+                    return True
+                # Si el pais devuelto no es chile (ej: argentina), retorna falso
+                if country:
+                    return False
+    except Exception as e:
+        print(f"Error verificando pais: {e}")
+    # Fallback: si falla la API, confiamos en el bounding box que ya existe en el otro archivo
+    return True
+
+
 
 async def verificar_edificaciones_en_poligono(wkt_polygon: str, bbox: dict[str, float]) -> bool:
     """

@@ -18,7 +18,11 @@ from app.services.geometry import (
 )
 from geoalchemy2.elements import WKTElement
 from app.services.riesgos_service import evaluar_modulo_riesgos
-from app.services.territorio_service import evaluar_modulo_territorio, obtener_comuna_por_coordenadas
+from app.services.territorio_service import (
+    evaluar_modulo_territorio,
+    obtener_comuna_por_coordenadas,
+    es_territorio_chileno,
+)
 from app.services.vegetacion_service import evaluar_modulo_vegetacion
 from app.services.suelo_service import evaluar_modulo_suelo
 
@@ -102,12 +106,15 @@ async def analizar_consulta_territorial(
     centroide = calcular_centroide(poligono)
     bbox = calcular_bbox(poligono)
     
-    # Validacion geografica (Territorio Continental de Chile)
+    # Validacion geografica basica (Territorio Continental de Chile)
     lat_c = centroide["latitud"]
     lon_c = centroide["longitud"]
-    fuera_de_chile = not (-56.0 <= lat_c <= -17.0 and -76.0 <= lon_c <= -66.0)
+    fuera_de_chile_bbox = not (-56.0 <= lat_c <= -17.0 and -76.0 <= lon_c <= -66.0)
 
-    if fuera_de_chile:
+    # Validacion exacta de pais
+    es_chile = await es_territorio_chileno(lat_c, lon_c)
+
+    if fuera_de_chile_bbox or not es_chile:
         from fastapi import HTTPException
         raise HTTPException(
             status_code=400,
