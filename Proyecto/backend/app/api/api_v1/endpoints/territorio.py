@@ -511,6 +511,7 @@ async def get_humedales_proxy(
         "geometryType": "esriGeometryEnvelope",
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": "NOM_HUMDET,ORDEN_1",
+        "inSR": "4326",
         "outSR": "4326",
         "f": "geojson"
     }
