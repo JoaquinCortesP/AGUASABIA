@@ -85,6 +85,7 @@ export function MapPage() {
   
   // Estado local para los resultados del análisis (permite cargar historial o reportes en vivo)
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [locationName, setLocationName] = useState<string | null>(null);
 
   // Nivel de usuario
   const isGuest = user === null;
@@ -156,6 +157,32 @@ export function MapPage() {
       loadSavedConsulta();
     }
   }, [consultaIdParam]);
+
+  // Reverse Geocoding para obtener el nombre del lugar
+  useEffect(() => {
+    if (analysisResult?.area?.centroide) {
+      const { latitud, longitud } = analysisResult.area.centroide;
+      const fetchLocation = async () => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitud}&lon=${longitud}&zoom=10&addressdetails=1`);
+          const data = await res.json();
+          if (data && data.address) {
+            const city = data.address.city || data.address.town || data.address.village || data.address.county || "";
+            const state = data.address.state || data.address.region || "";
+            setLocationName([city, state].filter(Boolean).join(", "));
+          } else {
+            setLocationName(null);
+          }
+        } catch (err) {
+          console.error("Error en reverse geocoding:", err);
+          setLocationName(null);
+        }
+      };
+      fetchLocation();
+    } else {
+      setLocationName(null);
+    }
+  }, [analysisResult?.area?.centroide]);
 
   const handleAnalyze = () => {
     if (polygon.length < 3) {
@@ -795,6 +822,29 @@ export function MapPage() {
       }
 
       case "suelo": {
+        if (modulo.estado === "error_timeout") {
+          return (
+            <div className="space-y-3 mt-2">
+              <div className="bg-destructive/10 border-l-4 border-destructive p-3 rounded-r-lg space-y-2">
+                <div className="flex items-center gap-2 text-destructive font-bold text-xs">
+                  <span>⏳</span>
+                  <span>Servidor de suelos demorado</span>
+                </div>
+                <p className="text-[10px] text-destructive/80 leading-relaxed">
+                  ISRIC SoilGrids no respondió a tiempo. Puedes reintentar la conexión.
+                </p>
+                <button 
+                  onClick={handleAnalyze} 
+                  disabled={mutation.isPending}
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-[10px] font-bold py-1.5 px-3 rounded shadow-sm transition active:scale-95 flex items-center gap-1"
+                >
+                  🔄 Reintentar Conexión
+                </button>
+              </div>
+            </div>
+          );
+        }
+
         const { textura, ph_suelo } = datos;
         
         const TEXTURE_DESCRIPTIONS: Record<string, string> = {
@@ -1192,9 +1242,16 @@ export function MapPage() {
             ▶
           </button>
           
-          <h2 className="font-extrabold text-xl text-brand-gradient tracking-tight border-b border-border/40 pb-2 pt-2">
-            Reporte Hídrico
-          </h2>
+          <div className="border-b border-border/40 pb-2 pt-2">
+            <h2 className="font-extrabold text-xl text-brand-gradient tracking-tight">
+              Reporte Hídrico
+            </h2>
+            {locationName && (
+              <p className="text-[11px] font-semibold text-muted-foreground mt-0.5 flex items-center gap-1 leading-tight">
+                📍 {locationName}
+              </p>
+            )}
+          </div>
 
           {/* Botón Dashboard Completo para usuarios Pro */}
           {isPremiumPro && analysisResult && (

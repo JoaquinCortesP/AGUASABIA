@@ -59,32 +59,22 @@ async def evaluar_modulo_suelo(latitud: float, longitud: float, avanzado_habilit
         
     if not success:
         return {
-            "estado": "informativo",
-            "titulo": "Datos Edafológicos Inaccesibles (Modo Fallback)",
-            "explicacion": "No se pudo conectar al proveedor satelital de suelos (ISRIC) por Timeout. Mostrando datos aproximados referenciales.",
-            "datos": {
-                "textura": "Franco-Arcillosa",
-                "arcilla_pct": 32.5,
-                "arena_pct": 35.0,
-                "limo_pct": 32.5,
-                "ph": 6.8
-            },
+            "estado": "error_timeout",
+            "titulo": "Conexión a SoilGrids Demorada",
+            "explicacion": "El proveedor satelital de suelos (ISRIC) no respondió a tiempo. Puedes reintentar la conexión más tarde.",
+            "datos": {},
             "fuentes": [],
             "avanzado": {
-                "composicion": {
-                    "arcilla_pct": 32.5,
-                    "arena_pct": 35.0,
-                    "limo_pct": 32.5,
+                "coordenadas_consulta": {
+                    "latitud": latitud,
+                    "longitud": longitud
                 },
-                "propiedades": {
-                    "ph": 6.8,
-                    "nitrogeno_g_kg": 1.5,
-                }
+                "api_status": "TIMEOUT",
             },
             "avanzado_restringido": not avanzado_habilitado,
             "metadatos_informe": {
-                "explicacion_extraccion": "Intento de conexión a SoilGrids (ISRIC) fallido por timeout. Datos generados por un modelo local de contingencia.",
-                "explicacion_calculo": "Textura y composición aproximadas."
+                "explicacion_extraccion": "Intento de conexión a SoilGrids (ISRIC) fallido por timeout.",
+                "explicacion_calculo": "No se pudo calcular la textura."
             }
         }
     
