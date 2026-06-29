@@ -176,12 +176,12 @@ async def run_sync():
                 attrs = f.get("attributes", {})
                 geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
                 if geom:
-                    from datetime import datetime
+                    from datetime import datetime, timezone
                     
                     f_ini = attrs.get("FECHA_DECRETO")
                     f_fin = attrs.get("FECHA_CADUCIDAD")
-                    dt_ini = datetime.utcfromtimestamp(f_ini/1000).date() if f_ini else datetime.now().date()
-                    dt_fin = datetime.utcfromtimestamp(f_fin/1000).date() if f_fin else datetime.now().date()
+                    dt_ini = datetime.fromtimestamp(f_ini/1000, tz=timezone.utc).date() if f_ini else datetime.now().date()
+                    dt_fin = datetime.fromtimestamp(f_fin/1000, tz=timezone.utc).date() if f_fin else datetime.now().date()
                     
                     stmt = insert(DecretoEscasez).values(
                         id=attrs.get("OBJECTID"),
