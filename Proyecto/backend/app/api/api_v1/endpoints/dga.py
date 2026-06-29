@@ -16,7 +16,7 @@ def get_acuiferos(db: Session = Depends(deps.get_db)) -> Any:
         AcuiferoProtegido.objectid,
         AcuiferoProtegido.nombre,
         AcuiferoProtegido.region,
-        func.ST_AsGeoJSON(AcuiferoProtegido.geom)
+        func.ST_AsGeoJSON(func.ST_Simplify(AcuiferoProtegido.geom, 0.005))
     ).all()
     
     features = []
@@ -46,7 +46,7 @@ def get_cuencas(db: Session = Depends(deps.get_db)) -> Any:
         Cuenca.id,
         Cuenca.nombre,
         Cuenca.codigo,
-        func.ST_AsGeoJSON(Cuenca.geometria)
+        func.ST_AsGeoJSON(func.ST_Simplify(Cuenca.geometria, 0.005))
     ).all()
     
     features = []
@@ -76,7 +76,7 @@ def get_decretos_escasez(db: Session = Depends(deps.get_db)) -> Any:
         DecretoEscasez.id,
         DecretoEscasez.numero_decreto,
         DecretoEscasez.region,
-        func.ST_AsGeoJSON(DecretoEscasez.geometria)
+        func.ST_AsGeoJSON(func.ST_Simplify(DecretoEscasez.geometria, 0.005))
     ).all()
     
     features = []
