@@ -61,11 +61,11 @@ async def fetch_layer_data(client: httpx.AsyncClient, service_name: str, out_fie
             await asyncio.sleep(random.uniform(3.0, 7.0))
             if attempt == 2:
                 logger.error(f"Fallo definitivo al obtener OIDs de {service_name}.")
-                return []
+                return
     
     if not object_ids:
         logger.info(f"No hay registros para {service_name}.")
-        return []
+        return
         
     logger.info(f"{len(object_ids)} registros en {service_name}. Descargando geometria...")
     
