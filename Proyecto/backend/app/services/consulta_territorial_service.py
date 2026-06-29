@@ -120,6 +120,8 @@ async def analizar_consulta_territorial(
             status_code=400,
             detail="No se puede analizar el territorio: El área seleccionada se encuentra en el mar o fuera de las fronteras de Chile continental."
         )
+        
+    fuera_de_chile = False
 
     avanzado_habilitado = payload.modo == "avanzado" and usuario_tiene_modo_avanzado(usuario)
     requiere_plan_pago = payload.modo == "avanzado" and not avanzado_habilitado
