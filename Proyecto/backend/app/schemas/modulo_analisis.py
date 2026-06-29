@@ -3,7 +3,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-EstadoModulo = Literal["normal", "moderado", "alto", "informativo", "pendiente", "no_disponible"]
+EstadoModulo = Literal["normal", "moderado", "alto", "informativo", "pendiente", "no_disponible", "error_timeout"]
 
 
 class FuenteDato(BaseModel):
