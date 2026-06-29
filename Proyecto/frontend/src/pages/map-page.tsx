@@ -11,6 +11,7 @@ import type { Coordinates } from "@/types/territory";
 import { calcularAreaHectareas } from "@/lib/leaflet/geo";
 import { HelpCircle, Info, X, Menu, FileSpreadsheet, Download } from "lucide-react";
 import { api } from "@/services/api";
+import humedalesDestacados from "@/data/humedales.json";
 export function MapPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -960,7 +961,11 @@ export function MapPage() {
   }
 
   if (activeLayers.includes("humedales")) {
-    layerItems["humedales"] = []; // No items for wetlands yet as it uses events
+    layerItems["humedales"] = humedalesDestacados.map((h: any) => ({
+      name: h.name,
+      lat: h.lat,
+      lng: h.lng
+    }));
   }
 
   if (activeLayers.includes("cuencas")) {
