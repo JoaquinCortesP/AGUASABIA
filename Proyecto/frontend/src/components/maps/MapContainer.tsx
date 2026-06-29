@@ -32,6 +32,12 @@ function WetlandsLayer() {
   }, []);
 
   const fetchWetlandsInView = async () => {
+    // Solo consultar humedales si el zoom es lo suficientemente cercano para no sobrecargar el servidor MMA
+    if (map.getZoom() < 10) {
+      setWetlandsGeoData(null);
+      return;
+    }
+    
     const bounds = map.getBounds();
     const geometry = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
     try {

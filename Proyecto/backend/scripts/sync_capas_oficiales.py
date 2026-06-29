@@ -69,9 +69,8 @@ async def fetch_layer_data(client: httpx.AsyncClient, service_name: str, out_fie
         
     logger.info(f"{len(object_ids)} registros en {service_name}. Descargando geometria...")
     
-    chunk_size = 50
+    chunk_size = 10
     chunks = [object_ids[i:i + chunk_size] for i in range(0, len(object_ids), chunk_size)]
-    all_features = []
     
     for chunk in chunks:
         payload = {
@@ -87,11 +86,10 @@ async def fetch_layer_data(client: httpx.AsyncClient, service_name: str, out_fie
                 data = res.json()
                 if "error" in data:
                     raise Exception(data["error"]["message"])
-                all_features.extend(data.get("features", []))
+                yield data.get("features", [])
                 break
             except Exception as e:
                 await asyncio.sleep(random.uniform(2.0, 5.0))
-    return all_features
 
 
 async def run_sync():
@@ -100,102 +98,102 @@ async def run_sync():
         async with httpx.AsyncClient() as client:
             
             # 1. Acuiferos Protegidos
-            features = await fetch_layer_data(client, 'DGA/Acuiferos_Protegidos', 'OBJECTID,NOM_VEGA,REGION')
-            for f in features:
-                attrs = f.get("attributes", {})
-                geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
-                if geom:
-                    stmt = insert(AcuiferoProtegido).values(
-                        objectid=attrs.get("OBJECTID"),
-                        nombre=attrs.get("NOM_VEGA"),
-                        region=attrs.get("REGION"),
-                        geom=f"SRID=4326;{geom.wkt}"
-                    ).on_conflict_do_update(
-                        index_elements=['objectid'],
-                        set_={'nombre': attrs.get("NOM_VEGA"), 'geom': f"SRID=4326;{geom.wkt}"}
-                    )
-                    db.execute(stmt)
-            db.commit()
+            async for chunk_features in fetch_layer_data(client, 'DGA/Acuiferos_Protegidos', 'OBJECTID,NOM_VEGA,REGION'):
+                for f in chunk_features:
+                    attrs = f.get("attributes", {})
+                    geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
+                    if geom:
+                        stmt = insert(AcuiferoProtegido).values(
+                            objectid=attrs.get("OBJECTID"),
+                            nombre=attrs.get("NOM_VEGA"),
+                            region=attrs.get("REGION"),
+                            geom=f"SRID=4326;{geom.wkt}"
+                        ).on_conflict_do_update(
+                            index_elements=['objectid'],
+                            set_={'nombre': attrs.get("NOM_VEGA"), 'geom': f"SRID=4326;{geom.wkt}"}
+                        )
+                        db.execute(stmt)
+                db.commit()
 
             # 2. Areas de Restriccion y Zonas de Prohibicion
-            features = await fetch_layer_data(client, 'DGA/Areas_de_Restriccion_y_Zonas_de_Prohibicion', 'OBJECTID,NOM_BNA,NOM_ACUIF,TIPO_LIMIT')
-            for f in features:
-                attrs = f.get("attributes", {})
-                geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
-                if geom:
-                    nombre = attrs.get("NOM_BNA") or attrs.get("NOM_ACUIF")
-                    stmt = insert(AreaRestriccionProhibicion).values(
-                        objectid=attrs.get("OBJECTID"),
-                        nombre=nombre,
-                        tipo=attrs.get("TIPO_LIMIT"),
-                        geom=f"SRID=4326;{geom.wkt}"
-                    ).on_conflict_do_update(
-                        index_elements=['objectid'],
-                        set_={'nombre': nombre, 'tipo': attrs.get("TIPO_LIMIT"), 'geom': f"SRID=4326;{geom.wkt}"}
-                    )
-                    db.execute(stmt)
-            db.commit()
+            async for chunk_features in fetch_layer_data(client, 'DGA/Areas_de_Restriccion_y_Zonas_de_Prohibicion', 'OBJECTID,NOM_BNA,NOM_ACUIF,TIPO_LIMIT'):
+                for f in chunk_features:
+                    attrs = f.get("attributes", {})
+                    geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
+                    if geom:
+                        nombre = attrs.get("NOM_BNA") or attrs.get("NOM_ACUIF")
+                        stmt = insert(AreaRestriccionProhibicion).values(
+                            objectid=attrs.get("OBJECTID"),
+                            nombre=nombre,
+                            tipo=attrs.get("TIPO_LIMIT"),
+                            geom=f"SRID=4326;{geom.wkt}"
+                        ).on_conflict_do_update(
+                            index_elements=['objectid'],
+                            set_={'nombre': nombre, 'tipo': attrs.get("TIPO_LIMIT"), 'geom': f"SRID=4326;{geom.wkt}"}
+                        )
+                        db.execute(stmt)
+                db.commit()
 
             # 3. Declaracion de Agotamiento
-            features = await fetch_layer_data(client, 'DGA/Declaracion_de_Agotamiento', 'OBJECTID,NOM_AGOTA')
-            for f in features:
-                attrs = f.get("attributes", {})
-                geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
-                if geom:
-                    stmt = insert(DeclaracionAgotamiento).values(
-                        objectid=attrs.get("OBJECTID"),
-                        nombre=attrs.get("NOM_AGOTA"),
-                        geom=f"SRID=4326;{geom.wkt}"
-                    ).on_conflict_do_update(
-                        index_elements=['objectid'],
-                        set_={'nombre': attrs.get("NOM_AGOTA"), 'geom': f"SRID=4326;{geom.wkt}"}
-                    )
-                    db.execute(stmt)
-            db.commit()
+            async for chunk_features in fetch_layer_data(client, 'DGA/Declaracion_de_Agotamiento', 'OBJECTID,NOM_AGOTA'):
+                for f in chunk_features:
+                    attrs = f.get("attributes", {})
+                    geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
+                    if geom:
+                        stmt = insert(DeclaracionAgotamiento).values(
+                            objectid=attrs.get("OBJECTID"),
+                            nombre=attrs.get("NOM_AGOTA"),
+                            geom=f"SRID=4326;{geom.wkt}"
+                        ).on_conflict_do_update(
+                            index_elements=['objectid'],
+                            set_={'nombre': attrs.get("NOM_AGOTA"), 'geom': f"SRID=4326;{geom.wkt}"}
+                        )
+                        db.execute(stmt)
+                db.commit()
 
             # 4. Decretos Caudales de Reserva
-            features = await fetch_layer_data(client, 'DGA/Decretos_Caudales_de_Reserva', 'OBJECTID,NOM_RESERVA')
-            for f in features:
-                attrs = f.get("attributes", {})
-                geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
-                if geom:
-                    stmt = insert(DecretoCaudalReserva).values(
-                        objectid=attrs.get("OBJECTID"),
-                        nombre=attrs.get("NOM_RESERVA"),
-                        geom=f"SRID=4326;{geom.wkt}"
-                    ).on_conflict_do_update(
-                        index_elements=['objectid'],
-                        set_={'nombre': attrs.get("NOM_RESERVA"), 'geom': f"SRID=4326;{geom.wkt}"}
-                    )
-                    db.execute(stmt)
-            db.commit()
+            async for chunk_features in fetch_layer_data(client, 'DGA/Decretos_Caudales_de_Reserva', 'OBJECTID,NOM_RESERVA'):
+                for f in chunk_features:
+                    attrs = f.get("attributes", {})
+                    geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
+                    if geom:
+                        stmt = insert(DecretoCaudalReserva).values(
+                            objectid=attrs.get("OBJECTID"),
+                            nombre=attrs.get("NOM_RESERVA"),
+                            geom=f"SRID=4326;{geom.wkt}"
+                        ).on_conflict_do_update(
+                            index_elements=['objectid'],
+                            set_={'nombre': attrs.get("NOM_RESERVA"), 'geom': f"SRID=4326;{geom.wkt}"}
+                        )
+                        db.execute(stmt)
+                db.commit()
 
             # 5. Decretos Escasez
-            features = await fetch_layer_data(client, 'DGA/Decretos_Escasez_Hidrica', 'OBJECTID,NUM_DECRETO,REGION,FECHA_DECRETO,FECHA_CADUCIDAD')
-            for f in features:
-                attrs = f.get("attributes", {})
-                geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
-                if geom:
-                    from datetime import datetime, timezone
-                    
-                    f_ini = attrs.get("FECHA_DECRETO")
-                    f_fin = attrs.get("FECHA_CADUCIDAD")
-                    dt_ini = datetime.fromtimestamp(f_ini/1000, tz=timezone.utc).date() if f_ini else datetime.now().date()
-                    dt_fin = datetime.fromtimestamp(f_fin/1000, tz=timezone.utc).date() if f_fin else datetime.now().date()
-                    
-                    stmt = insert(DecretoEscasez).values(
-                        id=attrs.get("OBJECTID"),
-                        numero_decreto=str(attrs.get("NUM_DECRETO")),
-                        fecha_inicio=dt_ini,
-                        fecha_fin=dt_fin,
-                        region=attrs.get("REGION"),
-                        geometria=f"SRID=4326;{geom.wkt}"
-                    ).on_conflict_do_update(
-                        index_elements=['id'],
-                        set_={'numero_decreto': str(attrs.get("NUM_DECRETO")), 'geometria': f"SRID=4326;{geom.wkt}"}
-                    )
-                    db.execute(stmt)
-            db.commit()
+            async for chunk_features in fetch_layer_data(client, 'DGA/Decretos_Escasez_Hidrica', 'OBJECTID,NUM_DECRETO,REGION,FECHA_DECRETO,FECHA_CADUCIDAD'):
+                for f in chunk_features:
+                    attrs = f.get("attributes", {})
+                    geom = esri_to_shapely_multipolygon(f.get("geometry", {}))
+                    if geom:
+                        from datetime import datetime, timezone
+                        
+                        f_ini = attrs.get("FECHA_DECRETO")
+                        f_fin = attrs.get("FECHA_CADUCIDAD")
+                        dt_ini = datetime.fromtimestamp(f_ini/1000, tz=timezone.utc).date() if f_ini else datetime.now().date()
+                        dt_fin = datetime.fromtimestamp(f_fin/1000, tz=timezone.utc).date() if f_fin else datetime.now().date()
+                        
+                        stmt = insert(DecretoEscasez).values(
+                            id=attrs.get("OBJECTID"),
+                            numero_decreto=str(attrs.get("NUM_DECRETO")),
+                            fecha_inicio=dt_ini,
+                            fecha_fin=dt_fin,
+                            region=attrs.get("REGION"),
+                            geometria=f"SRID=4326;{geom.wkt}"
+                        ).on_conflict_do_update(
+                            index_elements=['id'],
+                            set_={'numero_decreto': str(attrs.get("NUM_DECRETO")), 'geometria': f"SRID=4326;{geom.wkt}"}
+                        )
+                        db.execute(stmt)
+                db.commit()
 
             logger.info("Ingesta de capas espaciales DGA finalizada con exito.")
     finally:
