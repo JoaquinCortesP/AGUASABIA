@@ -44,9 +44,8 @@ def calcular_ndvi_sentinel3(latitud: float, longitud: float, wkt_polygon: Option
     Aprovecha el tiempo de revisita de 2 días de Sentinel-3 (Resolución 300m).
     Extrae la radiancia TOA (Nivel 1B), enmascara nubes (Bit 27) y calcula NDVI.
     """
-    _init_ee()
-    
     try:
+        _init_ee()
         # Configurar la ventana de tiempo (Buscamos hasta 7 días atrás desde la fecha indicada para hacer gap-filling)
         end_date = datetime.fromisoformat(fecha_fin) if fecha_fin else datetime.now()
         start_date = end_date - timedelta(days=7)

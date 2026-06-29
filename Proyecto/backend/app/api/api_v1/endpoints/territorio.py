@@ -499,3 +499,29 @@ async def get_incendios_historicos(
         traceback.print_exc()
         raise HTTPException(status_code=502, detail="Error consultando IDE Minagri para incendios históricos")
 
+
+@router.get("/humedales")
+async def get_humedales_proxy(
+    geometry: str,
+) -> Any:
+    """Proxy para extraer humedales protegidos desde el MMA, evitando problemas de CORS y SSL"""
+    base_url = "https://arcgis.mma.gob.cl/server/rest/services/SIMBIO/SIMBIO_HUMEDALES/MapServer/0/query"
+    params = {
+        "geometry": geometry,
+        "geometryType": "esriGeometryEnvelope",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "NOM_HUMDET,ORDEN_1",
+        "outSR": "4326",
+        "f": "geojson"
+    }
+    try:
+        async with httpx.AsyncClient(verify=False) as client:
+            resp = await client.get(base_url, params=params, timeout=15.0)
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=502, detail="Error consultando MMA para humedales protegidos")
+
+

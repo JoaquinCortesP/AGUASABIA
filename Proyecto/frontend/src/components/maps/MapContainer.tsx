@@ -34,21 +34,15 @@ function WetlandsLayer() {
   const fetchWetlandsInView = async () => {
     const bounds = map.getBounds();
     const geometry = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-    const url = "https://arcgis.mma.gob.cl/server/rest/services/SIMBIO/SIMBIO_HUMEDALES/MapServer/0/query";
-    const params = new URLSearchParams({
-      geometry: geometry,
-      geometryType: "esriGeometryEnvelope",
-      spatialRel: "esriSpatialRelIntersects",
-      outFields: "NOM_HUMDET,ORDEN_1",
-      outSR: "4326",
-      f: "geojson"
-    });
     try {
-      const response = await fetch(`${url}?${params.toString()}`);
-      const data = await response.json();
-      setWetlandsGeoData(data);
+      const response = await api.get("/api/v1/territorio/humedales", {
+        params: {
+          geometry: geometry
+        }
+      });
+      setWetlandsGeoData(response.data);
     } catch (error) {
-      console.error("Error al cargar humedales MMA:", error);
+      console.error("Error al cargar humedales MMA a través del backend:", error);
     }
   };
 
