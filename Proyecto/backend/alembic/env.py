@@ -11,7 +11,8 @@ config = context.config
 if settings.DATABASE_URL is None:
     raise RuntimeError("DATABASE_URL is not configured. Check your .env or environment variables.")
 
-config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
+db_url = str(settings.DATABASE_URL).replace("postgresql://", "postgresql+psycopg://")
+config.set_main_option("sqlalchemy.url", db_url)
 
 fileConfig(config.config_file_name)
 
@@ -32,7 +33,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = str(settings.DATABASE_URL)
+    configuration["sqlalchemy.url"] = str(settings.DATABASE_URL).replace("postgresql://", "postgresql+psycopg://")
 
     connectable = engine_from_config(
         configuration,
