@@ -52,7 +52,7 @@ export function MainLayout() {
             <Link to="/" className="text-xl font-extrabold text-brand-gradient tracking-tight transition duration-300 hover:opacity-90">AguaSabia</Link>
           )}
           {(isCollapsed && !isMobile) && (
-            <Link to="/" className="text-xl font-extrabold text-primary tracking-tight">AGUASABIA</Link>
+            <Link to="/" className="text-xl font-extrabold text-primary tracking-tight">AguaSabia</Link>
           )}
           {isMobile && !isCollapsed && (
             <button onClick={() => setIsCollapsed(true)} className="p-1">
