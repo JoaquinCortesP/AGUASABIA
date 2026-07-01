@@ -12,7 +12,7 @@ echo Levantando servidor de desarrollo Vite (Pagina Web)...
 start "AguaSabia - Web" cmd /k "npm run dev"
 
 echo Levantando Metro Bundler para Expo Go (Aplicacion Movil)...
-start "AguaSabia - Expo Go" cmd /k "npx expo start"
+start "AguaSabia - Expo Go" cmd /k "npx expo start --tunnel"
 
 echo ========================================================
 echo El Frontend esta corriendo en Web y Expo Go simultaneamente

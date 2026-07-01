@@ -7,7 +7,7 @@ import * as Sharing from 'expo-sharing';
 
   // Se utilizará la URL de producción o la que venga en la variable de entorno
 export default function App() {
-  const webAppUrl = process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://aguasabia.cl';
+  const webAppUrl = process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://frontend-web-production-0c15.up.railway.app/mapa?consulta_id=5';
 
   console.log(`[AguaSabia Mobile] Cargando WebView en: ${webAppUrl}`);
 
